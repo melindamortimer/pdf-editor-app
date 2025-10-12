@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Any
 import fitz
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea
 from PySide6.QtCore import Qt, Signal, QPoint
-from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QMouseEvent, QFont
+from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor, QMouseEvent, QFont, QCursor
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,12 @@ class FullPDFViewer(QWidget):
         self.doc: Optional[fitz.Document] = None
         self.pixmap: Optional[QPixmap] = None
         self.annotations: List[Dict[str, Any]] = []
+
+        # Text preview state
+        self.text_preview_mode: bool = False
+        self.preview_font_size: int = 12
+        self.preview_color: tuple = (0, 0, 0)
+        self.mouse_pos: Optional[QPoint] = None
 
         self._setup_ui()
 

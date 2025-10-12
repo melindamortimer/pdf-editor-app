@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 class ToolType(Enum):
     """Available tool types."""
 
+    SELECT = "select"
     TEXT = "text"
     HIGHLIGHT = "highlight"
     SIGNATURE = "signature"
@@ -39,7 +40,7 @@ class AnnotationToolbar(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.current_tool: ToolType = ToolType.TEXT
+        self.current_tool: ToolType = ToolType.SELECT
         self.selected_color: tuple = (0, 0, 0)  # RGB 0-1
         self.font_size: int = 12
 
@@ -54,10 +55,22 @@ class AnnotationToolbar(QWidget):
         # Tool selection group
         layout.addWidget(QLabel("Tool:"))
 
+        self.select_btn = QToolButton()
+        self.select_btn.setText("↖ Select")
+        self.select_btn.setCheckable(True)
+        self.select_btn.setChecked(True)
+        self.select_btn.setToolTip("Select and navigate pages")
+        self.select_btn.setStyleSheet(
+            "QToolButton { padding: 3px 8px; font-size: 9pt; }"  # Minimal padding
+            "QToolButton:checked { background-color: #4CAF50; color: white; }"
+        )
+        self.select_btn.clicked.connect(lambda: self._select_tool(ToolType.SELECT))
+        layout.addWidget(self.select_btn)
+
         self.text_btn = QToolButton()
         self.text_btn.setText("✎ Text")
         self.text_btn.setCheckable(True)
-        self.text_btn.setChecked(True)
+        self.text_btn.setChecked(False)
         self.text_btn.setToolTip("Add text annotations (click on PDF to place)")
         self.text_btn.setStyleSheet(
             "QToolButton { padding: 3px 8px; font-size: 9pt; }"  # Minimal padding
@@ -165,6 +178,7 @@ class AnnotationToolbar(QWidget):
         self.current_tool = tool_type
 
         # Update button states
+        self.select_btn.setChecked(tool_type == ToolType.SELECT)
         self.text_btn.setChecked(tool_type == ToolType.TEXT)
         self.highlight_btn.setChecked(tool_type == ToolType.HIGHLIGHT)
         self.signature_btn.setChecked(tool_type == ToolType.SIGNATURE)

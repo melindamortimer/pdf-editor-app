@@ -289,7 +289,9 @@ class UnifiedPDFEditor(QMainWindow):
         self.text_input_group.setVisible(tool_type == ToolType.TEXT)
         self.signature_group.setVisible(tool_type == ToolType.SIGNATURE)
 
-        if tool_type == ToolType.TEXT:
+        if tool_type == ToolType.SELECT:
+            self.status_label.setText("Select mode. Click pages or use arrow keys to navigate.")
+        elif tool_type == ToolType.TEXT:
             self.status_label.setText("Text tool selected. Click on PDF to place text.")
         elif tool_type == ToolType.SIGNATURE:
             self.status_label.setText("Signature tool selected. Select certificate and password.")
