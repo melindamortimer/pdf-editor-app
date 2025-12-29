@@ -1,1 +1,0 @@
-"""Core PDF processing functionality."""
