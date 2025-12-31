@@ -56,6 +56,7 @@ export function createDocuments(count: number, overrides: Partial<PdfDocument> =
  */
 export function createPages(documentId: string, count: number): PdfPage[] {
   return Array.from({ length: count }, (_, i) => ({
+    id: generateId('page'),
     documentId,
     pageIndex: i,
     originalPageIndex: i
@@ -108,7 +109,7 @@ export function deletePage(pages: PdfPage[], index: number): PdfPage[] {
  */
 export function duplicatePage(pages: PdfPage[], index: number): PdfPage[] {
   const newPages = [...pages]
-  const duplicate = { ...pages[index] }
+  const duplicate = { ...pages[index], id: generateId('page') }
   newPages.splice(index + 1, 0, duplicate)
   return newPages
 }

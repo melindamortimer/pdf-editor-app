@@ -27,6 +27,7 @@ export default function App() {
 
         const newDoc: PdfDocument = { id, name, path: filePath, pageCount }
         const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
+          id: crypto.randomUUID(),
           documentId: id,
           pageIndex: i,
           originalPageIndex: i
@@ -67,7 +68,7 @@ export default function App() {
   const handleDuplicatePage = useCallback((index: number) => {
     setPages(prev => {
       const newPages = [...prev]
-      const duplicate = { ...prev[index] }
+      const duplicate = { ...prev[index], id: crypto.randomUUID() }
       newPages.splice(index + 1, 0, duplicate)
       return newPages
     })

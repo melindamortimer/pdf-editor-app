@@ -1,22 +1,38 @@
 .main-viewer {
   flex: 1;
   overflow: auto;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   padding: 20px;
   background: #2d2d2d;
+  cursor: grab;
+}
+
+.main-viewer.panning {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .main-viewer.empty {
+  display: flex;
   align-items: center;
-  flex-direction: column;
+  justify-content: center;
   color: #888;
+  cursor: default;
+}
+
+.main-viewer.empty .empty-message {
+  text-align: center;
 }
 
 .main-viewer.empty .hint {
   margin-top: 8px;
   font-size: 12px;
+}
+
+.canvas-wrapper {
+  display: inline-block;
+  min-width: 100%;
+  min-height: 100%;
+  text-align: center;
 }
 
 .main-viewer canvas {

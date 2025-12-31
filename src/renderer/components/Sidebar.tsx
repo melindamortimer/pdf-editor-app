@@ -96,9 +96,11 @@ export default function Sidebar({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      const oldIndex = pages.findIndex((_, i) => `page-${i}` === active.id)
-      const newIndex = pages.findIndex((_, i) => `page-${i}` === over.id)
-      onReorder(oldIndex, newIndex)
+      const oldIndex = pages.findIndex(p => p.id === active.id)
+      const newIndex = pages.findIndex(p => p.id === over.id)
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onReorder(oldIndex, newIndex)
+      }
     }
   }
 
@@ -119,7 +121,7 @@ export default function Sidebar({
   return (
     <div className="sidebar" onClick={closeContextMenu}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={pages.map((_, i) => `page-${i}`)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={pages.map(p => p.id)} strategy={verticalListSortingStrategy}>
           {pages.map((page, index) => {
             const showHeader = page.documentId !== currentDocId
             if (showHeader) {
@@ -131,8 +133,8 @@ export default function Sidebar({
 
             return (
               <SortableItem
-                key={`page-${index}`}
-                id={`page-${index}`}
+                key={page.id}
+                id={page.id}
                 page={page}
                 pageNumber={pageNumber}
                 showHeader={showHeader}

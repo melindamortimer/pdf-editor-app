@@ -6,6 +6,7 @@ export interface PdfDocument {
 }
 
 export interface PdfPage {
+  id: string // Unique ID for stable React keys during reordering
   documentId: string
   pageIndex: number
   originalPageIndex: number
