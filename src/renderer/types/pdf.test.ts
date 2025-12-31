@@ -36,6 +36,7 @@ describe('PDF Types', () => {
       const pages = createPages('doc-1', 1)
       const page = pages[0]
 
+      expect(page).toHaveProperty('id')
       expect(page).toHaveProperty('documentId')
       expect(page).toHaveProperty('pageIndex')
       expect(page).toHaveProperty('originalPageIndex')
@@ -48,6 +49,14 @@ describe('PDF Types', () => {
         expect(page.pageIndex).toBe(i)
         expect(page.originalPageIndex).toBe(i)
       })
+    })
+
+    it('has unique IDs for each page', () => {
+      const pages = createPages('doc-1', 5)
+      const ids = pages.map(p => p.id)
+      const uniqueIds = new Set(ids)
+
+      expect(uniqueIds.size).toBe(5)
     })
   })
 })
@@ -91,6 +100,15 @@ describe('Page Operations', () => {
       expect(result[0].originalPageIndex).toBe(0)
       expect(result[1].originalPageIndex).toBe(1)
       expect(result[2].originalPageIndex).toBe(2)
+    })
+
+    it('preserves page IDs through reorder', () => {
+      const pages = createPages('doc-1', 3)
+      const originalIds = pages.map(p => p.id)
+      const result = reorderPages(pages, 0, 2)
+
+      // Same IDs, different order
+      expect(result.map(p => p.id)).toEqual([originalIds[1], originalIds[2], originalIds[0]])
     })
   })
 
@@ -160,6 +178,17 @@ describe('Page Operations', () => {
       const result = duplicatePage(pages, 1)
 
       expect(result[2].documentId).toBe('my-doc')
+    })
+
+    it('duplicate gets a new unique ID', () => {
+      const pages = createPages('doc-1', 3)
+      const originalId = pages[1].id
+      const result = duplicatePage(pages, 1)
+
+      // Original page keeps its ID
+      expect(result[1].id).toBe(originalId)
+      // Duplicate has a different ID
+      expect(result[2].id).not.toBe(originalId)
     })
   })
 })

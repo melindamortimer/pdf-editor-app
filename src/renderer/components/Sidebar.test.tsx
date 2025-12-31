@@ -251,4 +251,98 @@ describe('Sidebar', () => {
       expect(onPageSelect).toHaveBeenCalledWith(3)
     })
   })
+
+  describe('Context Menu', () => {
+    it('shows context menu on right-click', async () => {
+      const doc = createDocument({ pageCount: 3 })
+      const pages = createPages(doc.id, 3)
+
+      const { container, user } = renderWithProviders(
+        <Sidebar
+          documents={[doc]}
+          pages={pages}
+          selectedPageIndex={0}
+          onPageSelect={vi.fn()}
+          {...defaultProps}
+        />
+      )
+
+      const thumbnails = container.querySelectorAll('.page-thumbnail')
+      await user.pointer({ keys: '[MouseRight]', target: thumbnails[1] })
+
+      expect(screen.getByText('Duplicate')).toBeInTheDocument()
+      expect(screen.getByText('Delete')).toBeInTheDocument()
+    })
+
+    it('calls onDuplicatePage when Duplicate clicked', async () => {
+      const doc = createDocument({ pageCount: 3 })
+      const pages = createPages(doc.id, 3)
+      const onDuplicatePage = vi.fn()
+
+      const { container, user } = renderWithProviders(
+        <Sidebar
+          documents={[doc]}
+          pages={pages}
+          selectedPageIndex={0}
+          onPageSelect={vi.fn()}
+          onReorder={vi.fn()}
+          onDeletePage={vi.fn()}
+          onDuplicatePage={onDuplicatePage}
+        />
+      )
+
+      const thumbnails = container.querySelectorAll('.page-thumbnail')
+      await user.pointer({ keys: '[MouseRight]', target: thumbnails[1] })
+      await user.click(screen.getByText('Duplicate'))
+
+      expect(onDuplicatePage).toHaveBeenCalledWith(1)
+    })
+
+    it('calls onDeletePage when Delete clicked', async () => {
+      const doc = createDocument({ pageCount: 3 })
+      const pages = createPages(doc.id, 3)
+      const onDeletePage = vi.fn()
+
+      const { container, user } = renderWithProviders(
+        <Sidebar
+          documents={[doc]}
+          pages={pages}
+          selectedPageIndex={0}
+          onPageSelect={vi.fn()}
+          onReorder={vi.fn()}
+          onDeletePage={onDeletePage}
+          onDuplicatePage={vi.fn()}
+        />
+      )
+
+      const thumbnails = container.querySelectorAll('.page-thumbnail')
+      await user.pointer({ keys: '[MouseRight]', target: thumbnails[2] })
+      await user.click(screen.getByText('Delete'))
+
+      expect(onDeletePage).toHaveBeenCalledWith(2)
+    })
+
+    it('closes context menu when clicking elsewhere', async () => {
+      const doc = createDocument({ pageCount: 3 })
+      const pages = createPages(doc.id, 3)
+
+      const { container, user } = renderWithProviders(
+        <Sidebar
+          documents={[doc]}
+          pages={pages}
+          selectedPageIndex={0}
+          onPageSelect={vi.fn()}
+          {...defaultProps}
+        />
+      )
+
+      const thumbnails = container.querySelectorAll('.page-thumbnail')
+      await user.pointer({ keys: '[MouseRight]', target: thumbnails[1] })
+      expect(screen.getByText('Duplicate')).toBeInTheDocument()
+
+      // Click on sidebar to close
+      await user.click(container.querySelector('.sidebar')!)
+      expect(screen.queryByText('Duplicate')).not.toBeInTheDocument()
+    })
+  })
 })

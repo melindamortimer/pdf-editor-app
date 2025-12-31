@@ -8,7 +8,9 @@ A desktop application for viewing PDFs, reordering pages, merging multiple docum
 - **React + TypeScript** - UI framework with type safety
 - **PDF.js** - Mozilla's PDF renderer for viewing
 - **pdf-lib** - Pure JS library for PDF manipulation (reorder, delete, duplicate, merge, add annotations)
+- **@dnd-kit** - Drag-and-drop toolkit for page reordering
 - **Vite** - Build tooling for fast development
+- **Vitest** - Unit testing framework
 - **electron-builder** - Packaging for distribution
 
 ## Features
@@ -204,6 +206,29 @@ src/
 - Digital signatures
 - Printing (use system PDF viewer)
 
+## Current Implementation Status
+
+### Completed
+- [x] Electron + React + TypeScript project setup
+- [x] PDF viewing with PDF.js
+- [x] Page thumbnails in sidebar
+- [x] Page selection and navigation
+- [x] Zoom controls (+/- buttons)
+- [x] Drag-and-drop page reordering
+- [x] Right-click context menu (Delete, Duplicate)
+- [x] Click-and-drag panning in main viewer
+- [x] Multi-document support (open multiple PDFs)
+
+### In Progress
+- [ ] Toolbar enhancements
+- [ ] Annotation tools
+
+### Planned
+- [ ] Save/Save As with pdf-lib
+- [ ] Undo/Redo
+- [ ] Keyboard shortcuts
+- [ ] PDF merging export
+
 ## Development
 
 ```bash
@@ -212,6 +237,15 @@ npm install
 
 # Run in development
 npm run dev
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
 
 # Build for production
 npm run build
