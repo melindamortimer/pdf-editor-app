@@ -1,0 +1,41 @@
+.page-thumbnail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.page-thumbnail:hover {
+  background: #3a3a3a;
+}
+
+.page-thumbnail.selected {
+  background: #0066cc;
+}
+
+.thumbnail-canvas {
+  border: 2px solid transparent;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.page-thumbnail.selected .thumbnail-canvas {
+  border-color: #fff;
+}
+
+.thumbnail-canvas canvas {
+  display: block;
+}
+
+.page-number {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.page-thumbnail.selected .page-number {
+  color: #fff;
+}

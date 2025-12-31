@@ -1,0 +1,29 @@
+.main-viewer {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+  background: #2d2d2d;
+}
+
+.main-viewer.empty {
+  align-items: center;
+  flex-direction: column;
+  color: #888;
+}
+
+.main-viewer.empty .hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.main-viewer canvas {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.main-viewer .loading {
+  position: absolute;
+  color: #888;
+}
