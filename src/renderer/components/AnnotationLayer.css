@@ -1,0 +1,64 @@
+.annotation-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.annotation {
+  box-sizing: border-box;
+}
+
+.annotation.selected {
+  outline: 2px solid #0066cc;
+  outline-offset: 1px;
+}
+
+.annotation.highlight {
+  border-radius: 2px;
+}
+
+.annotation.line {
+  border-radius: 1px;
+}
+
+.annotation.box {
+  border-radius: 2px;
+}
+
+.annotation.text {
+  user-select: none;
+  padding: 2px 4px;
+}
+
+.annotation.text.selected {
+  background-color: rgba(0, 102, 204, 0.1);
+}
+
+.annotation.text.editing {
+  padding: 0;
+}
+
+.text-edit-input {
+  width: 100%;
+  min-width: 100px;
+  background: transparent;
+  border: 1px solid #0066cc;
+  border-radius: 2px;
+  outline: none;
+  padding: 2px 4px;
+}
+
+.drawing-preview {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.drawing-preview.highlight {
+  border-radius: 2px;
+}
+
+.drawing-preview.box {
+  background: transparent;
+  border-radius: 2px;
+}

@@ -7,10 +7,14 @@ const defaultProps = {
   hasUnsavedChanges: false,
   canSave: false,
   zoom: 1,
+  currentTool: 'select' as const,
+  highlightColor: 'yellow' as const,
   onOpenFiles: vi.fn(),
   onSave: vi.fn(),
   onSaveAs: vi.fn(),
-  onZoomChange: vi.fn()
+  onZoomChange: vi.fn(),
+  onToolChange: vi.fn(),
+  onHighlightColorChange: vi.fn()
 }
 
 describe('Toolbar', () => {
@@ -162,6 +166,68 @@ describe('Toolbar', () => {
       await user.click(screen.getByText('150%'))
       // Dropdown should close, only current zoom visible
       expect(screen.queryAllByText('200%')).toHaveLength(0)
+    })
+  })
+
+  describe('Annotation Tools', () => {
+    it('renders all annotation tool buttons', () => {
+      renderWithProviders(<Toolbar {...defaultProps} hasDocuments={true} />)
+
+      expect(screen.getByTitle('Select')).toBeInTheDocument()
+      expect(screen.getByTitle('Highlight')).toBeInTheDocument()
+      expect(screen.getByTitle('Underline')).toBeInTheDocument()
+      expect(screen.getByTitle('Strikethrough')).toBeInTheDocument()
+      expect(screen.getByTitle('Box')).toBeInTheDocument()
+      expect(screen.getByTitle('Text')).toBeInTheDocument()
+    })
+
+    it('marks current tool as active', () => {
+      renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} currentTool="highlight" />
+      )
+
+      expect(screen.getByTitle('Highlight')).toHaveClass('active')
+      expect(screen.getByTitle('Select')).not.toHaveClass('active')
+    })
+
+    it('calls onToolChange when tool clicked', async () => {
+      const onToolChange = vi.fn()
+      const { user } = renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} onToolChange={onToolChange} />
+      )
+
+      await user.click(screen.getByTitle('Highlight'))
+      expect(onToolChange).toHaveBeenCalledWith('highlight')
+    })
+
+    it('disables annotation tools when no documents', () => {
+      renderWithProviders(<Toolbar {...defaultProps} hasDocuments={false} />)
+
+      expect(screen.getByTitle('Highlight')).toBeDisabled()
+      expect(screen.getByTitle('Box')).toBeDisabled()
+      expect(screen.getByTitle('Text')).toBeDisabled()
+    })
+
+    it('keeps select tool enabled without documents', () => {
+      renderWithProviders(<Toolbar {...defaultProps} hasDocuments={false} />)
+
+      expect(screen.getByTitle('Select')).not.toBeDisabled()
+    })
+
+    it('shows color picker when highlight tool is selected', () => {
+      renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} currentTool="highlight" />
+      )
+
+      expect(screen.getByTitle('Highlight color')).toBeInTheDocument()
+    })
+
+    it('does not show color picker for other tools', () => {
+      renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} currentTool="box" />
+      )
+
+      expect(screen.queryByTitle('Highlight color')).not.toBeInTheDocument()
     })
   })
 })

@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import MainViewer from './components/MainViewer'
 import { loadPdfDocument } from './services/pdfRenderer'
 import { loadPdfForManipulation, saveAsNewFile, saveToFile } from './services/pdfManipulator'
+import { useAnnotations } from './hooks/useAnnotations'
 import type { PdfDocument, PdfPage } from './types/pdf'
 import './index.css'
 
@@ -18,6 +19,26 @@ export default function App() {
 
   // Track initial page state to detect changes
   const initialPagesRef = useRef<string>('')
+
+  // Annotation state
+  const {
+    annotations,
+    selectedAnnotationId,
+    currentTool,
+    toolSettings,
+    canUndo,
+    canRedo,
+    addAnnotation,
+    updateAnnotation,
+    deleteAnnotation,
+    selectAnnotation,
+    setCurrentTool,
+    updateToolSettings,
+    getAnnotationsForPage,
+    undo,
+    redo,
+    discardAllAnnotations
+  } = useAnnotations()
 
   const handleOpenFiles = useCallback(async () => {
     try {
@@ -206,6 +227,20 @@ export default function App() {
         return
       }
 
+      // Ctrl/Cmd + Z: Undo
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+        e.preventDefault()
+        undo()
+        return
+      }
+
+      // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
+      if ((e.ctrlKey || e.metaKey) && (e.shiftKey && e.key === 'z' || e.key === 'y')) {
+        e.preventDefault()
+        redo()
+        return
+      }
+
       // Ctrl/Cmd + Plus: Zoom in
       if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
@@ -274,10 +309,18 @@ export default function App() {
         return
       }
 
-      // Delete or Backspace: Delete selected page
-      if ((e.key === 'Delete' || e.key === 'Backspace') && pages.length > 1) {
+      // Delete or Backspace: Delete selected annotation, or page if no annotation selected
+      if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault()
-        handleDeletePage(selectedPageIndex)
+        // If annotation is selected, delete it
+        if (selectedAnnotationId) {
+          deleteAnnotation(selectedAnnotationId)
+          return
+        }
+        // Otherwise delete selected page (if more than one page)
+        if (pages.length > 1) {
+          handleDeletePage(selectedPageIndex)
+        }
         return
       }
 
@@ -291,7 +334,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, pages.length, selectedPageIndex])
+  }, [handleOpenFiles, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, pages.length, selectedPageIndex, selectedAnnotationId, deleteAnnotation, undo, redo])
 
   // Get current page info for viewer
   const currentPage = pages[selectedPageIndex]
@@ -306,10 +349,19 @@ export default function App() {
         hasUnsavedChanges={hasUnsavedChanges}
         canSave={canSave}
         zoom={zoom}
+        currentTool={currentTool}
+        highlightColor={toolSettings.highlightColor}
+        canUndo={canUndo}
+        canRedo={canRedo}
         onOpenFiles={handleOpenFiles}
         onSave={handleSave}
         onSaveAs={handleSaveAs}
         onZoomChange={setZoom}
+        onToolChange={setCurrentTool}
+        onHighlightColorChange={(color) => updateToolSettings({ highlightColor: color })}
+        onUndo={undo}
+        onRedo={redo}
+        onDiscardAnnotations={discardAllAnnotations}
       />
       <div className="main-content">
         <Sidebar
@@ -323,8 +375,22 @@ export default function App() {
         />
         <MainViewer
           documentId={currentPage?.documentId || null}
+          pageId={currentPage?.id || null}
           pageIndex={currentPage?.originalPageIndex || 0}
           zoom={zoom}
+          annotations={currentPage ? getAnnotationsForPage(currentPage.id) : []}
+          selectedAnnotationId={selectedAnnotationId}
+          currentTool={currentTool}
+          highlightColor={toolSettings.highlightColor}
+          lineColor={toolSettings.lineColor}
+          boxColor={toolSettings.boxColor}
+          boxThickness={toolSettings.boxThickness}
+          textColor={toolSettings.textColor}
+          textFont={toolSettings.textFont}
+          textSize={toolSettings.textSize}
+          onAddAnnotation={addAnnotation}
+          onUpdateAnnotation={updateAnnotation}
+          onSelectAnnotation={selectAnnotation}
         />
       </div>
     </div>

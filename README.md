@@ -230,11 +230,15 @@ src/
 - [x] Save/Save As with pdf-lib (page reorder, delete, duplicate, merge)
 - [x] Unsaved changes indicator (asterisk on Save button)
 - [x] Overwrite warning on first Save
+- [x] Annotation tools (highlight, underline, strikethrough, box, text)
+- [x] Annotation selection and movement
+- [x] Highlight color picker (yellow, green, pink, blue)
 
 ### In Progress
-- [ ] Annotation tools
+- [ ] Annotation properties panel (font, size, color for text/box)
 
 ### Planned
+- [ ] Bake annotations into PDF on save
 - [ ] Undo/Redo
 
 ## Development

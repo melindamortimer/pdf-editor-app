@@ -1,18 +1,54 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { renderPage } from '../services/pdfRenderer'
+import AnnotationLayer from './AnnotationLayer'
+import type { Annotation, AnnotationTool, HighlightColor, BoxThickness, TextFont } from '../types/annotations'
 import './MainViewer.css'
 
 interface MainViewerProps {
   documentId: string | null
+  pageId: string | null
   pageIndex: number
   zoom: number
+  // Annotation props
+  annotations: Annotation[]
+  selectedAnnotationId: string | null
+  currentTool: AnnotationTool
+  highlightColor: HighlightColor
+  lineColor: string
+  boxColor: string
+  boxThickness: BoxThickness
+  textColor: string
+  textFont: TextFont
+  textSize: number
+  onAddAnnotation: (annotation: Annotation) => void
+  onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
+  onSelectAnnotation: (id: string | null) => void
 }
 
-export default function MainViewer({ documentId, pageIndex, zoom }: MainViewerProps) {
+export default function MainViewer({
+  documentId,
+  pageId,
+  pageIndex,
+  zoom,
+  annotations,
+  selectedAnnotationId,
+  currentTool,
+  highlightColor,
+  lineColor,
+  boxColor,
+  boxThickness,
+  textColor,
+  textFont,
+  textSize,
+  onAddAnnotation,
+  onUpdateAnnotation,
+  onSelectAnnotation
+}: MainViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [rendering, setRendering] = useState(false)
   const [hasContent, setHasContent] = useState(false)
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 })
 
   // Panning state
   const [isPanning, setIsPanning] = useState(false)
@@ -21,6 +57,7 @@ export default function MainViewer({ documentId, pageIndex, zoom }: MainViewerPr
   useEffect(() => {
     if (!documentId) {
       setHasContent(false)
+      setCanvasDimensions({ width: 0, height: 0 })
       return
     }
 
@@ -37,6 +74,7 @@ export default function MainViewer({ documentId, pageIndex, zoom }: MainViewerPr
           canvasRef.current.height = height
           ctx.drawImage(renderedCanvas, 0, 0)
           setHasContent(true)
+          setCanvasDimensions({ width, height })
 
           // Scroll to top-left when page changes
           if (containerRef.current) {
@@ -57,9 +95,14 @@ export default function MainViewer({ documentId, pageIndex, zoom }: MainViewerPr
     }
   }, [documentId, pageIndex, zoom])
 
-  // Pan handlers
+  // Only allow panning with select tool
+  const canPan = currentTool === 'select'
+
+  // Pan handlers - only work with select tool and when not on annotation layer
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current || e.button !== 0) return
+    if (!containerRef.current || e.button !== 0 || !canPan) return
+    // Don't start panning if clicking on canvas wrapper (let annotation layer handle it)
+    if ((e.target as HTMLElement).closest('.canvas-wrapper')) return
     setIsPanning(true)
     panStart.current = {
       x: e.clientX,
@@ -67,7 +110,7 @@ export default function MainViewer({ documentId, pageIndex, zoom }: MainViewerPr
       scrollLeft: containerRef.current.scrollLeft,
       scrollTop: containerRef.current.scrollTop
     }
-  }, [])
+  }, [canPan])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isPanning || !containerRef.current) return
@@ -104,10 +147,33 @@ export default function MainViewer({ documentId, pageIndex, zoom }: MainViewerPr
       )}
       {rendering && <div className="loading">Rendering...</div>}
       <div className="canvas-wrapper" style={{ display: isEmpty ? 'none' : undefined }}>
-        <canvas
-          ref={canvasRef}
-          style={{ display: hasContent ? 'block' : 'none' }}
-        />
+        <div className="canvas-container" style={{ position: 'relative', display: 'inline-block' }}>
+          <canvas
+            ref={canvasRef}
+            style={{ display: hasContent ? 'block' : 'none' }}
+          />
+          {hasContent && pageId && canvasDimensions.width > 0 && (
+            <AnnotationLayer
+              pageId={pageId}
+              annotations={annotations}
+              selectedAnnotationId={selectedAnnotationId}
+              currentTool={currentTool}
+              canvasWidth={canvasDimensions.width}
+              canvasHeight={canvasDimensions.height}
+              zoom={zoom}
+              highlightColor={highlightColor}
+              lineColor={lineColor}
+              boxColor={boxColor}
+              boxThickness={boxThickness}
+              textColor={textColor}
+              textFont={textFont}
+              textSize={textSize}
+              onAddAnnotation={onAddAnnotation}
+              onUpdateAnnotation={onUpdateAnnotation}
+              onSelectAnnotation={onSelectAnnotation}
+            />
+          )}
+        </div>
       </div>
     </div>
   )

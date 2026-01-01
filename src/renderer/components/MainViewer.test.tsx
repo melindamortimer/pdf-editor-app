@@ -16,12 +16,31 @@ const waitForRender = () => act(async () => {
   await new Promise(resolve => setTimeout(resolve, 0))
 })
 
+// Default props for MainViewer including annotation props
+const defaultProps = {
+  documentId: null as string | null,
+  pageId: null as string | null,
+  pageIndex: 0,
+  zoom: 1,
+  annotations: [],
+  selectedAnnotationId: null,
+  currentTool: 'select' as const,
+  highlightColor: 'yellow' as const,
+  lineColor: '#ff0000',
+  boxColor: '#ff0000',
+  boxThickness: 'medium' as const,
+  textColor: '#000000',
+  textFont: 'Arial' as const,
+  textSize: 12,
+  onAddAnnotation: vi.fn(),
+  onUpdateAnnotation: vi.fn(),
+  onSelectAnnotation: vi.fn()
+}
+
 describe('MainViewer', () => {
   describe('Empty State', () => {
     it('shows instructions when no document is loaded', async () => {
-      renderWithProviders(
-        <MainViewer documentId={null} pageIndex={0} zoom={1} />
-      )
+      renderWithProviders(<MainViewer {...defaultProps} />)
 
       expect(screen.getByText('Open a PDF to get started')).toBeInTheDocument()
       expect(screen.getByText('Ctrl+O to open file')).toBeInTheDocument()
@@ -29,18 +48,14 @@ describe('MainViewer', () => {
     })
 
     it('has "empty" CSS class when no document', async () => {
-      const { container } = renderWithProviders(
-        <MainViewer documentId={null} pageIndex={0} zoom={1} />
-      )
+      const { container } = renderWithProviders(<MainViewer {...defaultProps} />)
 
       expect(container.querySelector('.main-viewer')).toHaveClass('empty')
       await waitForRender()
     })
 
     it('still renders a hidden canvas for mounting purposes', async () => {
-      const { container } = renderWithProviders(
-        <MainViewer documentId={null} pageIndex={0} zoom={1} />
-      )
+      const { container } = renderWithProviders(<MainViewer {...defaultProps} />)
 
       const canvas = container.querySelector('canvas')
       expect(canvas).toBeInTheDocument()
@@ -51,7 +66,7 @@ describe('MainViewer', () => {
   describe('With Document', () => {
     it('renders canvas when document is provided', async () => {
       const { container } = renderWithProviders(
-        <MainViewer documentId="test-doc" pageIndex={0} zoom={1} />
+        <MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" />
       )
 
       const canvas = container.querySelector('canvas')
@@ -61,7 +76,7 @@ describe('MainViewer', () => {
 
     it('does not show empty message', async () => {
       renderWithProviders(
-        <MainViewer documentId="test-doc" pageIndex={0} zoom={1} />
+        <MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" />
       )
 
       expect(screen.queryByText('Open a PDF to get started')).not.toBeInTheDocument()
@@ -70,7 +85,7 @@ describe('MainViewer', () => {
 
     it('removes "empty" CSS class', async () => {
       const { container } = renderWithProviders(
-        <MainViewer documentId="test-doc" pageIndex={0} zoom={1} />
+        <MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" />
       )
 
       expect(container.querySelector('.main-viewer')).not.toHaveClass('empty')
@@ -81,26 +96,26 @@ describe('MainViewer', () => {
   describe('Props Changes', () => {
     it('accepts different zoom levels', async () => {
       const { rerender } = renderWithProviders(
-        <MainViewer documentId="test-doc" pageIndex={0} zoom={1} />
+        <MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" />
       )
       await waitForRender()
 
       // Should not throw when changing zoom
-      rerender(<MainViewer documentId="test-doc" pageIndex={0} zoom={2} />)
+      rerender(<MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" zoom={2} />)
       await waitForRender()
-      rerender(<MainViewer documentId="test-doc" pageIndex={0} zoom={0.5} />)
+      rerender(<MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" zoom={0.5} />)
       await waitForRender()
     })
 
     it('accepts different page indices', async () => {
       const { rerender } = renderWithProviders(
-        <MainViewer documentId="test-doc" pageIndex={0} zoom={1} />
+        <MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" />
       )
       await waitForRender()
 
-      rerender(<MainViewer documentId="test-doc" pageIndex={1} zoom={1} />)
+      rerender(<MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" pageIndex={1} />)
       await waitForRender()
-      rerender(<MainViewer documentId="test-doc" pageIndex={5} zoom={1} />)
+      rerender(<MainViewer {...defaultProps} documentId="test-doc" pageId="page-1" pageIndex={5} />)
       await waitForRender()
     })
   })
