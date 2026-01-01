@@ -227,14 +227,15 @@ src/
 - [x] Toolbar component with file operation buttons
 - [x] Zoom dropdown with preset levels (50%-300%)
 - [x] Keyboard shortcuts (Ctrl+O, Ctrl+D, Arrow keys, Delete, etc.)
+- [x] Save/Save As with pdf-lib (page reorder, delete, duplicate, merge)
+- [x] Unsaved changes indicator (asterisk on Save button)
+- [x] Overwrite warning on first Save
 
 ### In Progress
 - [ ] Annotation tools
 
 ### Planned
-- [ ] Save/Save As with pdf-lib
 - [ ] Undo/Redo
-- [ ] PDF merging export
 
 ## Development
 

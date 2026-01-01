@@ -13,15 +13,23 @@ const ZOOM_PRESETS = [
 
 interface ToolbarProps {
   hasDocuments: boolean
+  hasUnsavedChanges: boolean
+  canSave: boolean
   zoom: number
   onOpenFiles: () => void
+  onSave: () => void
+  onSaveAs: () => void
   onZoomChange: (zoom: number) => void
 }
 
 export default function Toolbar({
   hasDocuments,
+  hasUnsavedChanges,
+  canSave,
   zoom,
   onOpenFiles,
+  onSave,
+  onSaveAs,
   onZoomChange
 }: ToolbarProps) {
   const [showZoomDropdown, setShowZoomDropdown] = useState(false)
@@ -67,10 +75,19 @@ export default function Toolbar({
         <button onClick={onOpenFiles} title="Open PDF (Ctrl+O)">
           Open
         </button>
-        <button disabled={!hasDocuments} title="Save (Ctrl+S) - Coming soon">
-          Save
+        <button
+          onClick={onSave}
+          disabled={!hasDocuments}
+          className={hasUnsavedChanges ? 'has-changes' : ''}
+          title={canSave ? 'Save (Ctrl+S)' : 'Save As (Ctrl+S) - Multiple documents open'}
+        >
+          Save{hasUnsavedChanges ? '*' : ''}
         </button>
-        <button disabled={!hasDocuments} title="Save As (Ctrl+Shift+S) - Coming soon">
+        <button
+          onClick={onSaveAs}
+          disabled={!hasDocuments}
+          title="Save As (Ctrl+Shift+S)"
+        >
           Save As
         </button>
       </div>

@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Toolbar from './components/Toolbar'
 import Sidebar from './components/Sidebar'
 import MainViewer from './components/MainViewer'
 import { loadPdfDocument } from './services/pdfRenderer'
+import { loadPdfForManipulation, saveAsNewFile, saveToFile } from './services/pdfManipulator'
 import type { PdfDocument, PdfPage } from './types/pdf'
 import './index.css'
 
@@ -11,6 +12,12 @@ export default function App() {
   const [pages, setPages] = useState<PdfPage[]>([])
   const [selectedPageIndex, setSelectedPageIndex] = useState(0)
   const [zoom, setZoom] = useState(1.0)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
+  const [showSaveWarning, setShowSaveWarning] = useState(false)
+
+  // Track initial page state to detect changes
+  const initialPagesRef = useRef<string>('')
 
   const handleOpenFiles = useCallback(async () => {
     try {
@@ -22,9 +29,17 @@ export default function App() {
         const id = crypto.randomUUID()
         const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'Unknown'
 
-        const arrayBuffer = new Uint8Array(data).buffer
-        const pdf = await loadPdfDocument(arrayBuffer, id)
+        // Create separate ArrayBuffers for each library
+        // (PDF.js may transfer its buffer to a worker, detaching it)
+        const viewerBuffer = new Uint8Array(data).buffer
+        const manipulatorBuffer = new Uint8Array(data).buffer
+
+        // Load for viewing (PDF.js)
+        const pdf = await loadPdfDocument(viewerBuffer, id)
         const pageCount = pdf.numPages
+
+        // Load for manipulation (pdf-lib)
+        await loadPdfForManipulation(id, manipulatorBuffer)
 
         const newDoc: PdfDocument = { id, name, path: filePath, pageCount }
         const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
@@ -35,12 +50,46 @@ export default function App() {
         }))
 
         setDocuments(prev => [...prev, newDoc])
-        setPages(prev => [...prev, ...newPages])
+        setPages(prev => {
+          const updated = [...prev, ...newPages]
+          // Update initial state reference
+          initialPagesRef.current = JSON.stringify(updated.map(p => ({
+            documentId: p.documentId,
+            originalPageIndex: p.originalPageIndex
+          })))
+          return updated
+        })
+
+        // Set current file path for single document
+        if (filePaths.length === 1 && documents.length === 0) {
+          setCurrentFilePath(filePath)
+        } else {
+          setCurrentFilePath(null) // Multiple docs = must use Save As
+        }
       }
+
+      setHasUnsavedChanges(false)
     } catch (error) {
       console.error('Error opening PDF:', error)
     }
-  }, [])
+  }, [documents.length])
+
+  // Check for changes whenever pages update
+  useEffect(() => {
+    if (pages.length === 0) {
+      setHasUnsavedChanges(false)
+      return
+    }
+
+    const currentState = JSON.stringify(pages.map(p => ({
+      documentId: p.documentId,
+      originalPageIndex: p.originalPageIndex
+    })))
+
+    if (initialPagesRef.current && currentState !== initialPagesRef.current) {
+      setHasUnsavedChanges(true)
+    }
+  }, [pages])
 
   const handleReorder = useCallback((oldIndex: number, newIndex: number) => {
     setPages(prev => {
@@ -49,7 +98,6 @@ export default function App() {
       newPages.splice(newIndex, 0, moved)
       return newPages
     })
-    // Adjust selection if needed
     if (selectedPageIndex === oldIndex) {
       setSelectedPageIndex(newIndex)
     } else if (oldIndex < selectedPageIndex && newIndex >= selectedPageIndex) {
@@ -61,7 +109,7 @@ export default function App() {
 
   const handleDeletePage = useCallback((index: number) => {
     setPages(prev => {
-      if (prev.length <= 1) return prev // Don't delete last page
+      if (prev.length <= 1) return prev
       return prev.filter((_, i) => i !== index)
     })
     setSelectedPageIndex(prev => {
@@ -79,6 +127,61 @@ export default function App() {
     })
   }, [])
 
+  // Save As - always prompts for new location
+  const handleSaveAs = useCallback(async () => {
+    if (pages.length === 0) return
+
+    try {
+      const success = await saveAsNewFile(pages)
+      if (success) {
+        setHasUnsavedChanges(false)
+        // Update initial state to current
+        initialPagesRef.current = JSON.stringify(pages.map(p => ({
+          documentId: p.documentId,
+          originalPageIndex: p.originalPageIndex
+        })))
+      }
+    } catch (error) {
+      console.error('Save As failed:', error)
+      alert('Failed to save file. Please try again.')
+    }
+  }, [pages])
+
+  // Save - overwrites current file (with warning on first save)
+  const handleSave = useCallback(async () => {
+    if (pages.length === 0) return
+
+    // If multiple documents or no current path, use Save As
+    if (documents.length > 1 || !currentFilePath) {
+      handleSaveAs()
+      return
+    }
+
+    // Show warning on first save
+    if (!showSaveWarning) {
+      const confirmed = window.confirm(
+        'This will overwrite the original file. Continue?\n\n' +
+        '(Use "Save As" to save to a new location)'
+      )
+      if (!confirmed) return
+      setShowSaveWarning(true) // Don't ask again this session
+    }
+
+    try {
+      const success = await saveToFile(currentFilePath, pages)
+      if (success) {
+        setHasUnsavedChanges(false)
+        initialPagesRef.current = JSON.stringify(pages.map(p => ({
+          documentId: p.documentId,
+          originalPageIndex: p.originalPageIndex
+        })))
+      }
+    } catch (error) {
+      console.error('Save failed:', error)
+      alert('Failed to save file. Please try again.')
+    }
+  }, [pages, documents.length, currentFilePath, showSaveWarning, handleSaveAs])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -86,6 +189,20 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault()
         handleOpenFiles()
+        return
+      }
+
+      // Ctrl/Cmd + S: Save
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 's') {
+        e.preventDefault()
+        handleSave()
+        return
+      }
+
+      // Ctrl/Cmd + Shift + S: Save As
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 's') {
+        e.preventDefault()
+        handleSaveAs()
         return
       }
 
@@ -174,17 +291,24 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleDeletePage, handleDuplicatePage, pages.length, selectedPageIndex])
+  }, [handleOpenFiles, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, pages.length, selectedPageIndex])
 
   // Get current page info for viewer
   const currentPage = pages[selectedPageIndex]
+
+  // Can use Save (not Save As) only with single document
+  const canSave = documents.length === 1 && currentFilePath !== null
 
   return (
     <div className="app">
       <Toolbar
         hasDocuments={documents.length > 0}
+        hasUnsavedChanges={hasUnsavedChanges}
+        canSave={canSave}
         zoom={zoom}
         onOpenFiles={handleOpenFiles}
+        onSave={handleSave}
+        onSaveAs={handleSaveAs}
         onZoomChange={setZoom}
       />
       <div className="main-content">

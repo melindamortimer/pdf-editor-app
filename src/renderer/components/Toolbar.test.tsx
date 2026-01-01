@@ -4,8 +4,12 @@ import Toolbar from './Toolbar'
 
 const defaultProps = {
   hasDocuments: false,
+  hasUnsavedChanges: false,
+  canSave: false,
   zoom: 1,
   onOpenFiles: vi.fn(),
+  onSave: vi.fn(),
+  onSaveAs: vi.fn(),
   onZoomChange: vi.fn()
 }
 
@@ -38,6 +42,51 @@ describe('Toolbar', () => {
 
       expect(screen.getByText('Save')).not.toBeDisabled()
       expect(screen.getByText('Save As')).not.toBeDisabled()
+    })
+
+    it('calls onSave when Save clicked', async () => {
+      const onSave = vi.fn()
+      const { user } = renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} onSave={onSave} />
+      )
+
+      await user.click(screen.getByText('Save'))
+      expect(onSave).toHaveBeenCalled()
+    })
+
+    it('calls onSaveAs when Save As clicked', async () => {
+      const onSaveAs = vi.fn()
+      const { user } = renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} onSaveAs={onSaveAs} />
+      )
+
+      await user.click(screen.getByText('Save As'))
+      expect(onSaveAs).toHaveBeenCalled()
+    })
+
+    it('shows asterisk on Save button when unsaved changes exist', () => {
+      renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} hasUnsavedChanges={true} />
+      )
+
+      expect(screen.getByText('Save*')).toBeInTheDocument()
+    })
+
+    it('does not show asterisk when no unsaved changes', () => {
+      renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} hasUnsavedChanges={false} />
+      )
+
+      expect(screen.getByText('Save')).toBeInTheDocument()
+      expect(screen.queryByText('Save*')).not.toBeInTheDocument()
+    })
+
+    it('applies has-changes class when unsaved changes exist', () => {
+      renderWithProviders(
+        <Toolbar {...defaultProps} hasDocuments={true} hasUnsavedChanges={true} />
+      )
+
+      expect(screen.getByText('Save*')).toHaveClass('has-changes')
     })
   })
 
