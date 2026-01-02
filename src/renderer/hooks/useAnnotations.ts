@@ -7,7 +7,9 @@ import type {
   TextFont
 } from '../types/annotations'
 import {
-  DEFAULT_ANNOTATION_COLOR,
+  DEFAULT_LINE_COLOR,
+  DEFAULT_BOX_COLOR,
+  DEFAULT_BOX_FILL_COLOR,
   DEFAULT_HIGHLIGHT_COLOR,
   DEFAULT_BOX_THICKNESS,
   DEFAULT_TEXT_FONT,
@@ -18,6 +20,7 @@ export interface AnnotationToolSettings {
   highlightColor: HighlightColor
   lineColor: string
   boxColor: string
+  boxFillColor: string
   boxThickness: BoxThickness
   textColor: string
   textFont: TextFont
@@ -54,8 +57,9 @@ export function useAnnotations(): UseAnnotationsReturn {
   const [currentTool, setCurrentTool] = useState<AnnotationTool>('select')
   const [toolSettings, setToolSettings] = useState<AnnotationToolSettings>({
     highlightColor: DEFAULT_HIGHLIGHT_COLOR,
-    lineColor: DEFAULT_ANNOTATION_COLOR,
-    boxColor: DEFAULT_ANNOTATION_COLOR,
+    lineColor: DEFAULT_LINE_COLOR,
+    boxColor: DEFAULT_BOX_COLOR,
+    boxFillColor: DEFAULT_BOX_FILL_COLOR,
     boxThickness: DEFAULT_BOX_THICKNESS,
     textColor: '#000000',
     textFont: DEFAULT_TEXT_FONT,

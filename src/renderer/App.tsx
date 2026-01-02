@@ -342,6 +342,27 @@ export default function App() {
   // Can use Save (not Save As) only with single document
   const canSave = documents.length === 1 && currentFilePath !== null
 
+  // Get the selected annotation to determine its type (for showing box color pickers)
+  const selectedAnnotation = selectedAnnotationId
+    ? annotations.find(a => a.id === selectedAnnotationId)
+    : null
+  const selectedAnnotationType = selectedAnnotation?.type === 'box' ? 'box' : null
+
+  // Handler for box color changes - updates selected box if one is selected
+  const handleBoxColorChange = useCallback((color: string) => {
+    updateToolSettings({ boxColor: color })
+    if (selectedAnnotation?.type === 'box') {
+      updateAnnotation(selectedAnnotation.id, { color })
+    }
+  }, [selectedAnnotation, updateToolSettings, updateAnnotation])
+
+  const handleBoxFillColorChange = useCallback((color: string) => {
+    updateToolSettings({ boxFillColor: color })
+    if (selectedAnnotation?.type === 'box') {
+      updateAnnotation(selectedAnnotation.id, { fillColor: color })
+    }
+  }, [selectedAnnotation, updateToolSettings, updateAnnotation])
+
   return (
     <div className="app">
       <Toolbar
@@ -351,6 +372,10 @@ export default function App() {
         zoom={zoom}
         currentTool={currentTool}
         highlightColor={toolSettings.highlightColor}
+        lineColor={toolSettings.lineColor}
+        boxColor={toolSettings.boxColor}
+        boxFillColor={toolSettings.boxFillColor}
+        selectedAnnotationType={selectedAnnotationType}
         canUndo={canUndo}
         canRedo={canRedo}
         onOpenFiles={handleOpenFiles}
@@ -359,6 +384,9 @@ export default function App() {
         onZoomChange={setZoom}
         onToolChange={setCurrentTool}
         onHighlightColorChange={(color) => updateToolSettings({ highlightColor: color })}
+        onLineColorChange={(color) => updateToolSettings({ lineColor: color })}
+        onBoxColorChange={handleBoxColorChange}
+        onBoxFillColorChange={handleBoxFillColorChange}
         onUndo={undo}
         onRedo={redo}
         onDiscardAnnotations={discardAllAnnotations}
@@ -384,12 +412,14 @@ export default function App() {
           highlightColor={toolSettings.highlightColor}
           lineColor={toolSettings.lineColor}
           boxColor={toolSettings.boxColor}
+          boxFillColor={toolSettings.boxFillColor}
           boxThickness={toolSettings.boxThickness}
           textColor={toolSettings.textColor}
           textFont={toolSettings.textFont}
           textSize={toolSettings.textSize}
           onAddAnnotation={addAnnotation}
           onUpdateAnnotation={updateAnnotation}
+          onDeleteAnnotation={deleteAnnotation}
           onSelectAnnotation={selectAnnotation}
         />
       </div>

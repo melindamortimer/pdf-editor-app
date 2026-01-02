@@ -20,6 +20,7 @@ const defaultProps = {
   textSize: 12,
   onAddAnnotation: vi.fn(),
   onUpdateAnnotation: vi.fn(),
+  onDeleteAnnotation: vi.fn(),
   onSelectAnnotation: vi.fn()
 }
 
@@ -360,7 +361,7 @@ describe('AnnotationLayer', () => {
       expect(annotation.font).toBe('Georgia')
       expect(annotation.fontSize).toBe(16)
       expect(annotation.color).toBe('#333333')
-      expect(annotation.content).toBe('Text')
+      expect(annotation.content).toBe('') // Empty for immediate editing
     })
 
     it('selects newly created text annotation', () => {
@@ -377,6 +378,20 @@ describe('AnnotationLayer', () => {
       fireEvent.mouseDown(layer, { clientX: 200, clientY: 300, button: 0 })
 
       expect(onSelectAnnotation).toHaveBeenCalled()
+    })
+
+    it('text annotations have pointer events enabled in text mode', () => {
+      const text = createText()
+      const { container } = renderWithProviders(
+        <AnnotationLayer
+          {...defaultProps}
+          annotations={[text]}
+          currentTool="text"
+        />
+      )
+
+      const annotation = container.querySelector('.annotation.text')
+      expect(annotation).toHaveStyle({ pointerEvents: 'auto' })
     })
   })
 

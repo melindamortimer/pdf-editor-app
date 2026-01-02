@@ -24,6 +24,7 @@ interface AnnotationLayerProps {
   highlightColor: HighlightColor
   lineColor: string
   boxColor: string
+  boxFillColor: string
   boxThickness: BoxThickness
   textColor: string
   textFont: TextFont
@@ -31,6 +32,7 @@ interface AnnotationLayerProps {
   // Callbacks
   onAddAnnotation: (annotation: Annotation) => void
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
+  onDeleteAnnotation: (id: string) => void
   onSelectAnnotation: (id: string | null) => void
 }
 
@@ -53,12 +55,14 @@ export default function AnnotationLayer({
   highlightColor,
   lineColor,
   boxColor,
+  boxFillColor,
   boxThickness,
   textColor,
   textFont,
   textSize,
   onAddAnnotation,
   onUpdateAnnotation,
+  onDeleteAnnotation,
   onSelectAnnotation
 }: AnnotationLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null)
@@ -66,6 +70,34 @@ export default function AnnotationLayer({
   const [dragging, setDragging] = useState<{ id: string; startX: number; startY: number; annX: number; annY: number } | null>(null)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
+  const [isPlaceholderText, setIsPlaceholderText] = useState(false)
+  // Store pending text annotation while waiting for parent state to update
+  const [pendingTextAnnotation, setPendingTextAnnotation] = useState<Annotation | null>(null)
+  // Track if we just started editing to ignore spurious blur events
+  const justStartedEditing = useRef(false)
+  // Track the textarea ref for selecting placeholder text
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Clear pending annotation once it appears in the annotations array
+  useEffect(() => {
+    if (pendingTextAnnotation && annotations.some(a => a.id === pendingTextAnnotation.id)) {
+      setPendingTextAnnotation(null)
+    }
+  }, [annotations, pendingTextAnnotation])
+
+  // Select all text when editing starts with placeholder
+  useEffect(() => {
+    if (isPlaceholderText && editingTextId) {
+      // Use setTimeout to ensure textarea is mounted and focused first
+      const timer = setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus()
+          textareaRef.current.select()
+        }
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [isPlaceholderText, editingTextId])
 
   // Convert pixel coordinates to normalized (0-1) coordinates
   const toNormalized = useCallback((pixelX: number, pixelY: number) => ({
@@ -128,6 +160,8 @@ export default function AnnotationLayer({
 
     // Start drawing for annotation tools
     if (['highlight', 'underline', 'strikethrough', 'box'].includes(currentTool)) {
+      // Deselect any selected annotation when starting to draw
+      onSelectAnnotation(null)
       setDrawing({
         isDrawing: true,
         startX: pos.x,
@@ -137,8 +171,32 @@ export default function AnnotationLayer({
       })
     }
 
-    // Text tool - place text at click position
+    // Text tool - place text at click position or edit existing text
     if (currentTool === 'text') {
+      // First check if clicking on an existing text annotation
+      const clickedTextAnnotation = annotations.find(ann => {
+        if (ann.type !== 'text') return false
+        const annPos = toPixels(ann.x, ann.y)
+        const annWidth = ann.width * canvasWidth
+        const annHeight = ann.height * canvasHeight
+        return (
+          pos.x >= annPos.x &&
+          pos.x <= annPos.x + annWidth &&
+          pos.y >= annPos.y &&
+          pos.y <= annPos.y + annHeight
+        )
+      })
+
+      if (clickedTextAnnotation) {
+        // Edit existing text annotation
+        onSelectAnnotation(clickedTextAnnotation.id)
+        setEditingTextId(clickedTextAnnotation.id)
+        setEditingContent(clickedTextAnnotation.type === 'text' ? clickedTextAnnotation.content : '')
+        justStartedEditing.current = true
+        return
+      }
+
+      // Place new text annotation and immediately enter edit mode
       const normalized = toNormalized(pos.x, pos.y)
       const annotation: Annotation = {
         id: crypto.randomUUID(),
@@ -146,15 +204,22 @@ export default function AnnotationLayer({
         type: 'text',
         x: normalized.x,
         y: normalized.y,
-        width: 0.2, // Default width
+        width: 0.3, // Default width
         height: 0.03, // Default height
-        content: 'Text',
+        content: 'Text', // Placeholder text
         font: textFont,
         fontSize: textSize,
         color: textColor
       }
+      // Store pending annotation locally so we can render it immediately
+      setPendingTextAnnotation(annotation)
       onAddAnnotation(annotation)
       onSelectAnnotation(annotation.id)
+      // Immediately enter edit mode with placeholder selected
+      setEditingTextId(annotation.id)
+      setEditingContent('Text')
+      setIsPlaceholderText(true)
+      justStartedEditing.current = true
     }
   }, [currentTool, annotations, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, toPixels, onAddAnnotation, onSelectAnnotation, textFont, textSize, textColor])
 
@@ -244,6 +309,7 @@ export default function AnnotationLayer({
               width: normalizedSize.width,
               height: normalizedSize.height,
               color: boxColor,
+              fillColor: boxFillColor,
               thickness: boxThickness
             }
             break
@@ -261,7 +327,7 @@ export default function AnnotationLayer({
     if (dragging) {
       setDragging(null)
     }
-  }, [drawing, dragging, currentTool, pageId, canvasWidth, canvasHeight, toNormalized, highlightColor, lineColor, boxColor, boxThickness, onAddAnnotation, onSelectAnnotation])
+  }, [drawing, dragging, currentTool, pageId, canvasWidth, canvasHeight, toNormalized, highlightColor, lineColor, boxColor, boxFillColor, boxThickness, onAddAnnotation, onSelectAnnotation])
 
   // Handle mouse leave
   const handleMouseLeave = useCallback(() => {
@@ -274,16 +340,34 @@ export default function AnnotationLayer({
     if (annotation.type !== 'text') return
     setEditingTextId(annotation.id)
     setEditingContent(annotation.content)
+    setIsPlaceholderText(false) // Not a placeholder when editing existing
   }, [])
 
-  // Finish editing text annotation
+  // Finish editing text annotation (save content)
   const finishTextEdit = useCallback(() => {
+    // Ignore spurious blur events that happen immediately after starting to edit
+    if (justStartedEditing.current) {
+      justStartedEditing.current = false
+      return
+    }
     if (editingTextId && editingContent.trim()) {
       onUpdateAnnotation(editingTextId, { content: editingContent })
     }
+    // Don't delete empty annotations on blur - they're invisible anyway
+    // User can press Escape to delete, or they'll be cleaned up on save
     setEditingTextId(null)
     setEditingContent('')
+    setIsPlaceholderText(false)
+    setPendingTextAnnotation(null)
   }, [editingTextId, editingContent, onUpdateAnnotation])
+
+  // Cancel editing (keep annotation even if empty)
+  const cancelTextEdit = useCallback(() => {
+    setEditingTextId(null)
+    setEditingContent('')
+    setIsPlaceholderText(false)
+    setPendingTextAnnotation(null)
+  }, [])
 
   // Handle double-click to edit text
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -314,6 +398,7 @@ export default function AnnotationLayer({
   const renderAnnotation = (annotation: Annotation) => {
     const pos = toPixels(annotation.x, annotation.y)
     const isSelected = annotation.id === selectedAnnotationId
+    const isBeingEdited = annotation.id === editingTextId
 
     const baseStyle: React.CSSProperties = {
       position: 'absolute',
@@ -321,7 +406,8 @@ export default function AnnotationLayer({
       top: pos.y,
       width: annotation.width * canvasWidth,
       height: annotation.height * canvasHeight,
-      pointerEvents: currentTool === 'select' ? 'auto' : 'none'
+      // Allow pointer events when selected/editing or in select mode
+      pointerEvents: currentTool === 'select' || currentTool === 'text' || isBeingEdited ? 'auto' : 'none'
     }
 
     switch (annotation.type) {
@@ -359,7 +445,7 @@ export default function AnnotationLayer({
             style={{
               ...baseStyle,
               border: `${BOX_THICKNESS_PX[annotation.thickness]}px solid ${annotation.color}`,
-              backgroundColor: 'transparent'
+              backgroundColor: annotation.fillColor
             }}
           />
         )
@@ -375,30 +461,33 @@ export default function AnnotationLayer({
               fontFamily: annotation.font,
               fontSize: annotation.fontSize * zoom,
               color: annotation.color,
-              whiteSpace: 'nowrap',
+              whiteSpace: 'pre-wrap',
               overflow: 'visible'
             }}
           >
             {isEditing ? (
-              <input
-                type="text"
-                className="text-edit-input"
+              <textarea
+                ref={textareaRef}
+                className={`text-edit-input ${isPlaceholderText ? 'placeholder' : ''}`}
                 value={editingContent}
-                onChange={(e) => setEditingContent(e.target.value)}
+                onChange={(e) => {
+                  if (isPlaceholderText) {
+                    setIsPlaceholderText(false)
+                  }
+                  setEditingContent(e.target.value)
+                }}
                 onBlur={finishTextEdit}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    finishTextEdit()
-                  } else if (e.key === 'Escape') {
-                    setEditingTextId(null)
-                    setEditingContent('')
+                  if (e.key === 'Escape') {
+                    cancelTextEdit()
                   }
                 }}
                 autoFocus
+                rows={1}
                 style={{
                   fontFamily: annotation.font,
                   fontSize: annotation.fontSize * zoom,
-                  color: annotation.color
+                  color: isPlaceholderText ? annotation.color : annotation.color
                 }}
               />
             ) : (
@@ -471,7 +560,8 @@ export default function AnnotationLayer({
             className="drawing-preview box"
             style={{
               ...previewStyle,
-              border: `${BOX_THICKNESS_PX[boxThickness]}px solid ${boxColor}`
+              border: `${BOX_THICKNESS_PX[boxThickness]}px solid ${boxColor}`,
+              backgroundColor: boxFillColor
             }}
           />
         )
@@ -508,6 +598,8 @@ export default function AnnotationLayer({
       onDoubleClick={handleDoubleClick}
     >
       {annotations.map(renderAnnotation)}
+      {/* Render pending text annotation while waiting for parent state update */}
+      {pendingTextAnnotation && !annotations.some(a => a.id === pendingTextAnnotation.id) && renderAnnotation(pendingTextAnnotation)}
       {renderDrawingPreview()}
     </div>
   )

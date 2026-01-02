@@ -201,6 +201,56 @@
   border-color: #fff !important;
 }
 
+/* Box color picker icons */
+.box-outline-picker,
+.box-fill-picker {
+  position: relative;
+  border: none !important;
+}
+
+.box-outline-icon,
+.box-fill-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.box-outline-icon {
+  width: 14px;
+  height: 14px;
+  border: 3px solid #fff;
+  border-radius: 2px;
+  background: transparent;
+  box-shadow: 0 0 2px #000, inset 0 0 2px #000;
+}
+
+.box-fill-icon {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 0 2px #000;
+}
+
+/* Transparent option in dropdown */
+.transparent-option {
+  background: linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%) !important;
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #fff !important;
+}
+
+.transparent-pattern {
+  color: #666;
+  font-size: 14px;
+  font-weight: bold;
+}
+
 /* Unsaved changes indicator */
 .has-changes {
   background: #cc6600 !important;

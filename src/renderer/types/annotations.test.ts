@@ -8,7 +8,10 @@ import {
   DEFAULT_TEXT_FONT,
   DEFAULT_TEXT_SIZE,
   DEFAULT_BOX_THICKNESS,
-  DEFAULT_ANNOTATION_COLOR,
+  DEFAULT_LINE_COLOR,
+  DEFAULT_BOX_COLOR,
+  LINE_COLORS,
+  LINE_COLOR_OPTIONS,
   type Annotation,
   type HighlightAnnotation,
   type UnderlineAnnotation,
@@ -199,7 +202,20 @@ describe('Annotation Constants', () => {
       expect(DEFAULT_TEXT_FONT).toBe('Arial')
       expect(DEFAULT_TEXT_SIZE).toBe(12)
       expect(DEFAULT_BOX_THICKNESS).toBe('medium')
-      expect(DEFAULT_ANNOTATION_COLOR).toBe('#ff0000')
+      expect(DEFAULT_LINE_COLOR).toBe('#000000') // Black for underline
+      expect(DEFAULT_BOX_COLOR).toBe('#ff0000') // Red for box
+    })
+  })
+
+  describe('LINE_COLORS', () => {
+    it('has all color options', () => {
+      expect(LINE_COLORS.black).toBe('#000000')
+      expect(LINE_COLORS.red).toBe('#ff0000')
+      expect(LINE_COLORS.blue).toBe('#0066cc')
+    })
+
+    it('has correct color options array', () => {
+      expect(LINE_COLOR_OPTIONS).toEqual(['black', 'red', 'blue'])
     })
   })
 })

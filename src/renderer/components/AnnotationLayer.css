@@ -28,7 +28,8 @@
 
 .annotation.text {
   user-select: none;
-  padding: 2px 4px;
+  padding: 2px 0;
+  text-align: left;
 }
 
 .annotation.text.selected {
@@ -41,12 +42,21 @@
 
 .text-edit-input {
   width: 100%;
-  min-width: 100px;
-  background: transparent;
+  min-width: 150px;
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid #0066cc;
   border-radius: 2px;
   outline: none;
   padding: 2px 4px;
+  text-align: left;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.2;
+  field-sizing: content;
+}
+
+.text-edit-input.placeholder {
+  font-style: italic;
 }
 
 .drawing-preview {

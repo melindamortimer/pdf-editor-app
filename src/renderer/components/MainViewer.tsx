@@ -16,12 +16,14 @@ interface MainViewerProps {
   highlightColor: HighlightColor
   lineColor: string
   boxColor: string
+  boxFillColor: string
   boxThickness: BoxThickness
   textColor: string
   textFont: TextFont
   textSize: number
   onAddAnnotation: (annotation: Annotation) => void
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
+  onDeleteAnnotation: (id: string) => void
   onSelectAnnotation: (id: string | null) => void
 }
 
@@ -36,12 +38,14 @@ export default function MainViewer({
   highlightColor,
   lineColor,
   boxColor,
+  boxFillColor,
   boxThickness,
   textColor,
   textFont,
   textSize,
   onAddAnnotation,
   onUpdateAnnotation,
+  onDeleteAnnotation,
   onSelectAnnotation
 }: MainViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -164,12 +168,14 @@ export default function MainViewer({
               highlightColor={highlightColor}
               lineColor={lineColor}
               boxColor={boxColor}
+              boxFillColor={boxFillColor}
               boxThickness={boxThickness}
               textColor={textColor}
               textFont={textFont}
               textSize={textSize}
               onAddAnnotation={onAddAnnotation}
               onUpdateAnnotation={onUpdateAnnotation}
+              onDeleteAnnotation={onDeleteAnnotation}
               onSelectAnnotation={onSelectAnnotation}
             />
           )}

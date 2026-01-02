@@ -51,10 +51,11 @@ export interface StrikethroughAnnotation extends BaseAnnotation {
   color: string
 }
 
-// Box annotation - outline rectangle
+// Box annotation - outline rectangle with optional fill
 export interface BoxAnnotation extends BaseAnnotation {
   type: 'box'
-  color: string
+  color: string // Outline color
+  fillColor: string // Fill color (use 'transparent' for no fill)
   thickness: BoxThickness
 }
 
@@ -99,11 +100,24 @@ export const BOX_THICKNESS_PX: Record<BoxThickness, number> = {
 }
 
 // Default colors
-export const DEFAULT_ANNOTATION_COLOR = '#ff0000'
+export const DEFAULT_LINE_COLOR = '#000000' // Black for underline/strikethrough
+export const DEFAULT_BOX_COLOR = '#ff0000' // Red for box outline
+export const DEFAULT_BOX_FILL_COLOR = 'transparent' // Transparent fill by default
 export const DEFAULT_HIGHLIGHT_COLOR: HighlightColor = 'yellow'
 export const DEFAULT_TEXT_FONT: TextFont = 'Arial'
 export const DEFAULT_TEXT_SIZE = 12
 export const DEFAULT_BOX_THICKNESS: BoxThickness = 'medium'
+
+// Line/box color options for picker
+export type LineColor = 'black' | 'red' | 'blue'
+
+export const LINE_COLORS: Record<LineColor, string> = {
+  black: '#000000',
+  red: '#ff0000',
+  blue: '#0066cc'
+}
+
+export const LINE_COLOR_OPTIONS: LineColor[] = ['black', 'red', 'blue']
 
 // Font list for UI
 export const AVAILABLE_FONTS: TextFont[] = [
