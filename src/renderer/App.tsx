@@ -8,6 +8,13 @@ import { useAnnotations } from './hooks/useAnnotations'
 import type { PdfDocument, PdfPage } from './types/pdf'
 import './index.css'
 
+// Type for unified history entries
+type HistoryEntry =
+  | { type: 'pages'; pages: PdfPage[]; selectedIndex: number }
+  | { type: 'annotations' }
+
+const MAX_PAGE_HISTORY = 50
+
 export default function App() {
   const [documents, setDocuments] = useState<PdfDocument[]>([])
   const [pages, setPages] = useState<PdfPage[]>([])
@@ -16,6 +23,14 @@ export default function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
   const [showSaveWarning, setShowSaveWarning] = useState(false)
+
+  // Page history for undo/redo
+  const [pageHistory, setPageHistory] = useState<{ pages: PdfPage[]; selectedIndex: number }[]>([])
+  const [pageFuture, setPageFuture] = useState<{ pages: PdfPage[]; selectedIndex: number }[]>([])
+
+  // Track order of operations for unified undo (which system was modified last)
+  const [historyOrder, setHistoryOrder] = useState<HistoryEntry[]>([])
+  const [futureOrder, setFutureOrder] = useState<HistoryEntry[]>([])
 
   // Track initial page state to detect changes
   const initialPagesRef = useRef<string>('')
@@ -112,7 +127,23 @@ export default function App() {
     }
   }, [pages])
 
+  // Push current page state to history before making changes
+  const pushPageToHistory = useCallback(() => {
+    setPageHistory(prev => {
+      const newHistory = [...prev, { pages, selectedIndex: selectedPageIndex }]
+      if (newHistory.length > MAX_PAGE_HISTORY) {
+        return newHistory.slice(-MAX_PAGE_HISTORY)
+      }
+      return newHistory
+    })
+    setPageFuture([])
+    // Track this in the unified history order
+    setHistoryOrder(prev => [...prev, { type: 'pages', pages, selectedIndex: selectedPageIndex }])
+    setFutureOrder([])
+  }, [pages, selectedPageIndex])
+
   const handleReorder = useCallback((oldIndex: number, newIndex: number) => {
+    pushPageToHistory()
     setPages(prev => {
       const newPages = [...prev]
       const [moved] = newPages.splice(oldIndex, 1)
@@ -126,27 +157,27 @@ export default function App() {
     } else if (oldIndex > selectedPageIndex && newIndex <= selectedPageIndex) {
       setSelectedPageIndex(prev => prev + 1)
     }
-  }, [selectedPageIndex])
+  }, [selectedPageIndex, pushPageToHistory])
 
   const handleDeletePage = useCallback((index: number) => {
-    setPages(prev => {
-      if (prev.length <= 1) return prev
-      return prev.filter((_, i) => i !== index)
-    })
+    if (pages.length <= 1) return
+    pushPageToHistory()
+    setPages(prev => prev.filter((_, i) => i !== index))
     setSelectedPageIndex(prev => {
       if (prev >= index && prev > 0) return prev - 1
       return prev
     })
-  }, [])
+  }, [pages.length, pushPageToHistory])
 
   const handleDuplicatePage = useCallback((index: number) => {
+    pushPageToHistory()
     setPages(prev => {
       const newPages = [...prev]
       const duplicate = { ...prev[index], id: crypto.randomUUID() }
       newPages.splice(index + 1, 0, duplicate)
       return newPages
     })
-  }, [])
+  }, [pushPageToHistory])
 
   // Save As - always prompts for new location
   const handleSaveAs = useCallback(async () => {
@@ -203,6 +234,91 @@ export default function App() {
     }
   }, [pages, documents.length, currentFilePath, showSaveWarning, handleSaveAs])
 
+  // Page undo - restores previous page state
+  const pageUndo = useCallback(() => {
+    if (pageHistory.length === 0) return false
+    const previousState = pageHistory[pageHistory.length - 1]
+    setPageHistory(prev => prev.slice(0, -1))
+    setPageFuture(prev => [{ pages, selectedIndex: selectedPageIndex }, ...prev])
+    setPages(previousState.pages)
+    setSelectedPageIndex(previousState.selectedIndex)
+    return true
+  }, [pageHistory, pages, selectedPageIndex])
+
+  // Page redo - restores next page state
+  const pageRedo = useCallback(() => {
+    if (pageFuture.length === 0) return false
+    const nextState = pageFuture[0]
+    setPageFuture(prev => prev.slice(1))
+    setPageHistory(prev => [...prev, { pages, selectedIndex: selectedPageIndex }])
+    setPages(nextState.pages)
+    setSelectedPageIndex(nextState.selectedIndex)
+    return true
+  }, [pageFuture, pages, selectedPageIndex])
+
+  // Wrapped annotation functions that track in unified history
+  const wrappedAddAnnotation = useCallback((annotation: Parameters<typeof addAnnotation>[0]) => {
+    setHistoryOrder(prev => [...prev, { type: 'annotations' }])
+    setFutureOrder([])
+    addAnnotation(annotation)
+  }, [addAnnotation])
+
+  const wrappedUpdateAnnotation = useCallback((id: string, updates: Parameters<typeof updateAnnotation>[1]) => {
+    setHistoryOrder(prev => [...prev, { type: 'annotations' }])
+    setFutureOrder([])
+    updateAnnotation(id, updates)
+  }, [updateAnnotation])
+
+  const wrappedDeleteAnnotation = useCallback((id: string) => {
+    setHistoryOrder(prev => [...prev, { type: 'annotations' }])
+    setFutureOrder([])
+    deleteAnnotation(id)
+  }, [deleteAnnotation])
+
+  // Unified undo - checks historyOrder to determine what to undo
+  const unifiedUndo = useCallback(() => {
+    if (historyOrder.length === 0) return
+
+    const lastEntry = historyOrder[historyOrder.length - 1]
+    if (lastEntry.type === 'pages') {
+      if (pageUndo()) {
+        setHistoryOrder(prev => prev.slice(0, -1))
+        setFutureOrder(prev => [lastEntry, ...prev])
+      }
+    } else {
+      // Annotation undo
+      if (canUndo) {
+        undo()
+        setHistoryOrder(prev => prev.slice(0, -1))
+        setFutureOrder(prev => [lastEntry, ...prev])
+      }
+    }
+  }, [historyOrder, pageUndo, canUndo, undo])
+
+  // Unified redo - checks futureOrder to determine what to redo
+  const unifiedRedo = useCallback(() => {
+    if (futureOrder.length === 0) return
+
+    const nextEntry = futureOrder[0]
+    if (nextEntry.type === 'pages') {
+      if (pageRedo()) {
+        setFutureOrder(prev => prev.slice(1))
+        setHistoryOrder(prev => [...prev, nextEntry])
+      }
+    } else {
+      // Annotation redo
+      if (canRedo) {
+        redo()
+        setFutureOrder(prev => prev.slice(1))
+        setHistoryOrder(prev => [...prev, nextEntry])
+      }
+    }
+  }, [futureOrder, pageRedo, canRedo, redo])
+
+  // Combined undo/redo availability
+  const combinedCanUndo = historyOrder.length > 0
+  const combinedCanRedo = futureOrder.length > 0
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -230,14 +346,14 @@ export default function App() {
       // Ctrl/Cmd + Z: Undo
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
         e.preventDefault()
-        undo()
+        unifiedUndo()
         return
       }
 
       // Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
       if ((e.ctrlKey || e.metaKey) && (e.shiftKey && e.key === 'z' || e.key === 'y')) {
         e.preventDefault()
-        redo()
+        unifiedRedo()
         return
       }
 
@@ -314,7 +430,7 @@ export default function App() {
         e.preventDefault()
         // If annotation is selected, delete it
         if (selectedAnnotationId) {
-          deleteAnnotation(selectedAnnotationId)
+          wrappedDeleteAnnotation(selectedAnnotationId)
           return
         }
         // Otherwise delete selected page (if more than one page)
@@ -334,7 +450,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, pages.length, selectedPageIndex, selectedAnnotationId, deleteAnnotation, undo, redo])
+  }, [handleOpenFiles, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, pages.length, selectedPageIndex, selectedAnnotationId, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo])
 
   // Get current page info for viewer
   const currentPage = pages[selectedPageIndex]
@@ -352,16 +468,16 @@ export default function App() {
   const handleBoxColorChange = useCallback((color: string) => {
     updateToolSettings({ boxColor: color })
     if (selectedAnnotation?.type === 'box') {
-      updateAnnotation(selectedAnnotation.id, { color })
+      wrappedUpdateAnnotation(selectedAnnotation.id, { color })
     }
-  }, [selectedAnnotation, updateToolSettings, updateAnnotation])
+  }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
 
   const handleBoxFillColorChange = useCallback((color: string) => {
     updateToolSettings({ boxFillColor: color })
     if (selectedAnnotation?.type === 'box') {
-      updateAnnotation(selectedAnnotation.id, { fillColor: color })
+      wrappedUpdateAnnotation(selectedAnnotation.id, { fillColor: color })
     }
-  }, [selectedAnnotation, updateToolSettings, updateAnnotation])
+  }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
 
   return (
     <div className="app">
@@ -376,8 +492,8 @@ export default function App() {
         boxColor={toolSettings.boxColor}
         boxFillColor={toolSettings.boxFillColor}
         selectedAnnotationType={selectedAnnotationType}
-        canUndo={canUndo}
-        canRedo={canRedo}
+        canUndo={combinedCanUndo}
+        canRedo={combinedCanRedo}
         onOpenFiles={handleOpenFiles}
         onSave={handleSave}
         onSaveAs={handleSaveAs}
@@ -387,8 +503,8 @@ export default function App() {
         onLineColorChange={(color) => updateToolSettings({ lineColor: color })}
         onBoxColorChange={handleBoxColorChange}
         onBoxFillColorChange={handleBoxFillColorChange}
-        onUndo={undo}
-        onRedo={redo}
+        onUndo={unifiedUndo}
+        onRedo={unifiedRedo}
         onDiscardAnnotations={discardAllAnnotations}
       />
       <div className="main-content">
@@ -417,9 +533,9 @@ export default function App() {
           textColor={toolSettings.textColor}
           textFont={toolSettings.textFont}
           textSize={toolSettings.textSize}
-          onAddAnnotation={addAnnotation}
-          onUpdateAnnotation={updateAnnotation}
-          onDeleteAnnotation={deleteAnnotation}
+          onAddAnnotation={wrappedAddAnnotation}
+          onUpdateAnnotation={wrappedUpdateAnnotation}
+          onDeleteAnnotation={wrappedDeleteAnnotation}
           onSelectAnnotation={selectAnnotation}
         />
       </div>

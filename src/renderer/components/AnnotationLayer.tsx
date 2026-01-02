@@ -196,16 +196,35 @@ export default function AnnotationLayer({
         return
       }
 
+      // If currently editing a text annotation and clicked away, just finish the edit
+      // (don't create a new text box)
+      if (editingTextId) {
+        // Save the current text and exit edit mode
+        if (editingContent.trim()) {
+          onUpdateAnnotation(editingTextId, { content: editingContent })
+        }
+        setEditingTextId(null)
+        setEditingContent('')
+        setIsPlaceholderText(false)
+        setPendingTextAnnotation(null)
+        onSelectAnnotation(null)
+        return
+      }
+
       // Place new text annotation and immediately enter edit mode
-      const normalized = toNormalized(pos.x, pos.y)
+      // Adjust position slightly: 1px left, 2px down for better cursor alignment
+      const normalized = toNormalized(pos.x - 1, pos.y + 2)
+      const defaultWidth = 0.3
+      const defaultHeight = 0.03
       const annotation: Annotation = {
         id: crypto.randomUUID(),
         pageId,
         type: 'text',
+        // Left edge at cursor, vertically centered
         x: normalized.x,
-        y: normalized.y,
-        width: 0.3, // Default width
-        height: 0.03, // Default height
+        y: normalized.y - defaultHeight / 2,
+        width: defaultWidth,
+        height: defaultHeight,
         content: 'Text', // Placeholder text
         font: textFont,
         fontSize: textSize,
@@ -221,7 +240,7 @@ export default function AnnotationLayer({
       setIsPlaceholderText(true)
       justStartedEditing.current = true
     }
-  }, [currentTool, annotations, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, toPixels, onAddAnnotation, onSelectAnnotation, textFont, textSize, textColor])
+  }, [currentTool, annotations, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, toPixels, onAddAnnotation, onUpdateAnnotation, onSelectAnnotation, textFont, textSize, textColor, editingTextId, editingContent])
 
   // Handle mouse move
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
