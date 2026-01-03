@@ -39,6 +39,21 @@ export async function renderPage(
   return { canvas, width: viewport.width, height: viewport.height }
 }
 
+export async function getTextContent(
+  documentId: string,
+  pageIndex: number,
+  scale: number = 1.0
+): Promise<{ textContent: any; viewport: any }> {
+  const pdf = documentCache.get(documentId)
+  if (!pdf) throw new Error(`Document ${documentId} not loaded`)
+
+  const page = await pdf.getPage(pageIndex + 1)
+  const viewport = page.getViewport({ scale })
+  const textContent = await page.getTextContent()
+
+  return { textContent, viewport }
+}
+
 export function getDocument(id: string): PDFDocumentProxy | undefined {
   return documentCache.get(id)
 }

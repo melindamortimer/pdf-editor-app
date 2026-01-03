@@ -34,12 +34,12 @@ A desktop application for viewing PDFs, reordering pages, merging multiple docum
 | Tool | Description |
 |------|-------------|
 | **Highlight** | Semi-transparent rectangle. Colors: yellow, green, pink, blue |
-| **Underline** | Horizontal line under text |
-| **Strikethrough** | Horizontal line through text |
-| **Box** | Outline rectangle (no fill). Customizable color + thickness (thin/medium/thick) |
+| **Underline** | Horizontal line. Customizable color |
+| **Strikethrough** | Horizontal line through text. Customizable color |
+| **Box** | Rectangle with customizable border color, fill color, and thickness (thin/medium/thick) |
 | **Text** | Placed text with font selection, size, and color |
 
-All annotations remain movable and editable until the document is saved.
+All annotations can be selected, moved, and resized. Click to select, drag to move, use corner handles to resize.
 
 ### Text Fonts (7 formal options)
 1. Arial - sans-serif, clean
@@ -113,13 +113,13 @@ All annotations remain movable and editable until the document is saved.
 
 ## Annotation Workflow
 
-1. Select tool from toolbar (cursor changes)
-2. Draw/place annotation on page
-3. Click existing annotation to select (shows resize handles)
-4. Drag to move, drag handles to resize
-5. Press Delete to remove selected annotation
-6. Properties panel in toolbar when annotation selected (change color, font, etc.)
-7. Annotations are baked into PDF only when saved
+1. Select tool from toolbar (highlight, underline, strikethrough, box, or text)
+2. Click and drag on page to create annotation
+3. Click existing annotation to select (shows resize handles at corners)
+4. Drag annotation body to move, drag corner handles to resize
+5. Press Delete/Backspace to remove selected annotation
+6. Use color pickers in toolbar to change annotation colors
+7. Ctrl+Z to undo, Ctrl+Y to redo any annotation changes
 
 ## File Operations
 
@@ -140,8 +140,9 @@ All annotations remain movable and editable until the document is saved.
 ### Save Process
 1. Uses pdf-lib to create new PDF document
 2. Copies pages in current order (respecting deletions/duplications/reordering)
-3. Bakes annotations into each page as PDF drawing operations
-4. Writes to file
+3. Writes to file
+
+Note: Annotations are not yet baked into the saved PDF (planned feature).
 
 ## Keyboard Shortcuts
 
@@ -173,9 +174,8 @@ Standard undo stack behavior.
 
 ## Window Behavior
 
-- Remembers window size/position between sessions
-- Title bar shows filename (with * if unsaved changes)
-- Close with unsaved changes prompts: "Save changes before closing?"
+- Save button shows asterisk (*) when there are unsaved changes
+- First save to original file shows overwrite warning
 
 ## Project Structure
 
@@ -183,25 +183,25 @@ Standard undo stack behavior.
 src/
   main/              # Electron main process
     main.ts          # App entry, window management
-    ipc.ts           # IPC handlers for file operations
   renderer/          # React app
+    App.tsx          # Main app component with state management
     components/
-      Toolbar.tsx
-      Sidebar.tsx
-      PageThumbnail.tsx
-      MainViewer.tsx
-      AnnotationLayer.tsx
-      annotations/   # Individual annotation components
+      Toolbar.tsx        # File ops, zoom, annotation tools
+      Sidebar.tsx        # Page thumbnails, drag-and-drop
+      PageThumbnail.tsx  # Individual page preview
+      MainViewer.tsx     # PDF canvas and layers
+      AnnotationLayer.tsx # Annotation rendering and interaction
+      TextLayer.tsx      # PDF text selection layer
     hooks/
-      usePdfDocument.ts
-      useAnnotations.ts
-      useUndoRedo.ts
+      useAnnotations.ts  # Annotation state and undo/redo
     services/
-      pdfRenderer.ts    # PDF.js wrapper
-      pdfManipulator.ts # pdf-lib operations
-    store/           # State management
-    types/           # TypeScript interfaces
+      pdfRenderer.ts     # PDF.js wrapper for viewing
+      pdfManipulator.ts  # pdf-lib for save operations
+    types/
+      pdf.ts             # PDF document/page types
+      annotations.ts     # Annotation types
   preload/           # Electron preload scripts
+  test/              # Test utilities and setup
 ```
 
 ## Not In Scope
@@ -219,27 +219,25 @@ src/
 - [x] PDF viewing with PDF.js
 - [x] Page thumbnails in sidebar
 - [x] Page selection and navigation
-- [x] Zoom controls (+/- buttons)
+- [x] Zoom controls (+/- buttons, dropdown presets 50%-300%)
 - [x] Drag-and-drop page reordering
 - [x] Right-click context menu (Delete, Duplicate)
 - [x] Click-and-drag panning in main viewer
 - [x] Multi-document support (open multiple PDFs)
-- [x] Toolbar component with file operation buttons
-- [x] Zoom dropdown with preset levels (50%-300%)
-- [x] Keyboard shortcuts (Ctrl+O, Ctrl+D, Arrow keys, Delete, etc.)
+- [x] Keyboard shortcuts (Ctrl+O, Ctrl+S, Ctrl+Z/Y, Arrow keys, Delete, etc.)
 - [x] Save/Save As with pdf-lib (page reorder, delete, duplicate, merge)
-- [x] Unsaved changes indicator (asterisk on Save button)
+- [x] Unsaved changes indicator
 - [x] Overwrite warning on first Save
 - [x] Annotation tools (highlight, underline, strikethrough, box, text)
-- [x] Annotation selection and movement
-- [x] Highlight color picker (yellow, green, pink, blue)
+- [x] Annotation selection, movement, and resize handles
+- [x] Annotation color pickers (highlight colors, line colors, box border/fill colors)
+- [x] Undo/Redo (unified for page and annotation operations)
 
 ### In Progress
-- [ ] Annotation properties panel (font, size, color for text/box)
+- [ ] Text selection layer (select PDF text for precise highlighting/underlining)
 
 ### Planned
 - [ ] Bake annotations into PDF on save
-- [ ] Undo/Redo
 
 ## Development
 

@@ -81,6 +81,22 @@ Object.defineProperty(globalThis, 'crypto', {
 })
 
 // ============================================
+// Mock: PDF.js TextLayer
+// ============================================
+
+// Add DOMMatrix polyfill for PDF.js in test environment
+class MockDOMMatrix {
+  a = 1; b = 0; c = 0; d = 1; e = 0; f = 0
+  constructor() {}
+  multiply() { return this }
+  inverse() { return this }
+  translate() { return this }
+  scale() { return this }
+  rotate() { return this }
+}
+global.DOMMatrix = MockDOMMatrix as any
+
+// ============================================
 // Mock: ResizeObserver (for some UI components like @dnd-kit)
 // ============================================
 

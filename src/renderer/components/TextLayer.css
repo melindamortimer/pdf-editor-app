@@ -1,0 +1,20 @@
+/* Text layer - overlay on canvas for text selection */
+.text-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none; /* Allow clicks to pass through to canvas/annotation layer */
+}
+
+/* Individual text boxes - invisible by default */
+.text-box {
+  position: absolute;
+  pointer-events: auto; /* Enable selection on text boxes */
+}
+
+/* Debug mode - show yellow semi-transparent boxes */
+.text-layer.debug .text-box {
+  background: rgba(255, 255, 0, 0.3);
+  border: 1px solid rgba(255, 200, 0, 0.5);
+}

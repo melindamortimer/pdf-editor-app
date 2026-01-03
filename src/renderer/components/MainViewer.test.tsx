@@ -8,6 +8,14 @@ vi.mock('@services/pdfRenderer', () => ({
     canvas: document.createElement('canvas'),
     width: 800,
     height: 1000
+  }),
+  getTextContent: vi.fn().mockResolvedValue({
+    textContent: { items: [] },
+    viewport: {
+      width: 800,
+      height: 1000,
+      rawDims: { pageWidth: 800, pageHeight: 1000 }
+    }
   })
 }))
 
@@ -34,6 +42,7 @@ const defaultProps = {
   textSize: 12,
   onAddAnnotation: vi.fn(),
   onUpdateAnnotation: vi.fn(),
+  onDeleteAnnotation: vi.fn(),
   onSelectAnnotation: vi.fn()
 }
 
