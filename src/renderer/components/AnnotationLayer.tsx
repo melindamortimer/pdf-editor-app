@@ -75,6 +75,9 @@ export default function AnnotationLayer({
   const justStartedEditing = useRef(false)
   // Track the textarea ref for selecting placeholder text
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Track custom resize state
+  const [resizing, setResizing] = useState<{ startX: number; startWidth: number } | null>(null)
+  const [textareaWidth, setTextareaWidth] = useState<number | null>(null)
 
   // Clear pending annotation once it appears in the annotations array
   useEffect(() => {
@@ -96,6 +99,36 @@ export default function AnnotationLayer({
       return () => clearTimeout(timer)
     }
   }, [isPlaceholderText, editingTextId])
+
+  // Reset textarea width when starting to edit a different annotation
+  useEffect(() => {
+    setTextareaWidth(null)
+  }, [editingTextId])
+
+  // Handle resize mouse move and mouse up on document
+  useEffect(() => {
+    if (!resizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizing.startX
+      const newWidth = Math.max(50, resizing.startWidth + delta)
+      setTextareaWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setResizing(null)
+      // Refocus textarea after resize
+      textareaRef.current?.focus()
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [resizing])
 
 
   // Convert pixel coordinates to normalized (0-1) coordinates
@@ -200,11 +233,12 @@ export default function AnnotationLayer({
       // If currently editing a text annotation and clicked away, just finish the edit
       // (don't create a new text box)
       if (editingTextId) {
-        // Save the current text and width, then exit edit mode
+        // Save the current text, width, and height, then exit edit mode
         if (editingContent.trim()) {
-          const updates: { content: string; width?: number } = { content: editingContent }
+          const updates: { content: string; width?: number; height?: number } = { content: editingContent }
           if (textareaRef.current) {
             updates.width = textareaRef.current.offsetWidth / canvasWidth
+            updates.height = textareaRef.current.offsetHeight / canvasHeight
           }
           onUpdateAnnotation(editingTextId, updates)
         }
@@ -212,6 +246,7 @@ export default function AnnotationLayer({
         setEditingContent('')
         setIsPlaceholderText(false)
         setPendingTextAnnotation(null)
+        setTextareaWidth(null)
         onSelectAnnotation(null)
         return
       }
@@ -374,12 +409,20 @@ export default function AnnotationLayer({
       justStartedEditing.current = false
       return
     }
+    // Don't finish if currently resizing
+    if (resizing) return
+
     if (editingTextId && editingContent.trim()) {
-      // Capture resized width if textarea was resized
-      const updates: { content: string; width?: number } = { content: editingContent }
+      // Capture resized width and actual height
+      const updates: { content: string; width?: number; height?: number } = { content: editingContent }
+      if (textareaWidth !== null) {
+        updates.width = textareaWidth / canvasWidth
+      } else if (textareaRef.current) {
+        updates.width = textareaRef.current.offsetWidth / canvasWidth
+      }
+      // Save actual rendered height so selection area matches text
       if (textareaRef.current) {
-        const newWidth = textareaRef.current.offsetWidth / canvasWidth
-        updates.width = newWidth
+        updates.height = textareaRef.current.offsetHeight / canvasHeight
       }
       onUpdateAnnotation(editingTextId, updates)
     }
@@ -389,7 +432,16 @@ export default function AnnotationLayer({
     setEditingContent('')
     setIsPlaceholderText(false)
     setPendingTextAnnotation(null)
-  }, [editingTextId, editingContent, canvasWidth, onUpdateAnnotation])
+    setTextareaWidth(null)
+  }, [editingTextId, editingContent, canvasWidth, onUpdateAnnotation, resizing, textareaWidth])
+
+  // Start custom resize
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const currentWidth = textareaWidth ?? (textareaRef.current?.offsetWidth || 150)
+    setResizing({ startX: e.clientX, startWidth: currentWidth })
+  }, [textareaWidth])
 
   // Cancel editing (keep annotation even if empty)
   const cancelTextEdit = useCallback(() => {
@@ -469,6 +521,9 @@ export default function AnnotationLayer({
 
       case 'text':
         const isEditing = annotation.id === editingTextId
+        const effectiveWidth = isEditing && textareaWidth !== null
+          ? textareaWidth
+          : annotation.width * canvasWidth
         return (
           <div
             key={annotation.id}
@@ -485,31 +540,37 @@ export default function AnnotationLayer({
             }}
           >
             {isEditing ? (
-              <textarea
-                ref={textareaRef}
-                className={`text-edit-input ${isPlaceholderText ? 'placeholder' : ''}`}
-                value={editingContent}
-                onChange={(e) => {
-                  if (isPlaceholderText) {
-                    setIsPlaceholderText(false)
-                  }
-                  setEditingContent(e.target.value)
-                }}
-                onBlur={finishTextEdit}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    cancelTextEdit()
-                  }
-                }}
-                autoFocus
-                rows={1}
-                style={{
-                  fontFamily: annotation.font,
-                  fontSize: annotation.fontSize * zoom,
-                  color: annotation.color,
-                  width: annotation.width * canvasWidth
-                }}
-              />
+              <div className="text-edit-wrapper">
+                <textarea
+                  ref={textareaRef}
+                  className={`text-edit-input ${isPlaceholderText ? 'placeholder' : ''}`}
+                  value={editingContent}
+                  onChange={(e) => {
+                    if (isPlaceholderText) {
+                      setIsPlaceholderText(false)
+                    }
+                    setEditingContent(e.target.value)
+                  }}
+                  onBlur={finishTextEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      cancelTextEdit()
+                    }
+                  }}
+                  autoFocus
+                  rows={1}
+                  style={{
+                    fontFamily: annotation.font,
+                    fontSize: annotation.fontSize * zoom,
+                    color: annotation.color,
+                    width: effectiveWidth
+                  }}
+                />
+                <div
+                  className="text-resize-handle"
+                  onMouseDown={startResize}
+                />
+              </div>
             ) : (
               annotation.content
             )}

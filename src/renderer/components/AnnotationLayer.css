@@ -43,16 +43,20 @@
   background-color: transparent;
 }
 
+.text-edit-wrapper {
+  position: relative;
+  display: inline-flex;
+}
+
 .text-edit-input {
-  width: 100%;
-  min-width: 150px;
+  min-width: 50px;
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #0066cc;
   border-radius: 2px;
   outline: none;
   padding: 2px 4px;
   text-align: left;
-  resize: horizontal;
+  resize: none;
   overflow: auto;
   line-height: 1.2;
   field-sizing: content;
@@ -60,6 +64,22 @@
 
 .text-edit-input.placeholder {
   font-style: italic;
+}
+
+.text-resize-handle {
+  position: absolute;
+  right: -4px;
+  top: 1px;
+  height: calc(100% - 2px);
+  width: 12px;
+  cursor: ew-resize;
+  background: linear-gradient(to right, transparent 0%, transparent 40%, #0066cc 40%, #0066cc 60%, transparent 60%);
+  opacity: 0.6;
+  border-radius: 2px;
+}
+
+.text-resize-handle:hover {
+  opacity: 1;
 }
 
 .drawing-preview {
