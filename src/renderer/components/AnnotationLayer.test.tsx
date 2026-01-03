@@ -20,7 +20,6 @@ const defaultProps = {
   textSize: 12,
   onAddAnnotation: vi.fn(),
   onUpdateAnnotation: vi.fn(),
-  onDeleteAnnotation: vi.fn(),
   onSelectAnnotation: vi.fn()
 }
 
@@ -361,7 +360,7 @@ describe('AnnotationLayer', () => {
       expect(annotation.font).toBe('Georgia')
       expect(annotation.fontSize).toBe(16)
       expect(annotation.color).toBe('#333333')
-      expect(annotation.content).toBe('') // Empty for immediate editing
+      expect(annotation.content).toBe('Text') // Placeholder text, auto-selected for replacement
     })
 
     it('selects newly created text annotation', () => {

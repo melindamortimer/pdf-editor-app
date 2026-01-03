@@ -15,6 +15,10 @@ type HistoryEntry =
 
 const MAX_PAGE_HISTORY = 50
 
+// Serialize page state for change detection
+const serializePageState = (pageList: PdfPage[]) =>
+  JSON.stringify(pageList.map(p => ({ documentId: p.documentId, originalPageIndex: p.originalPageIndex })))
+
 export default function App() {
   const [documents, setDocuments] = useState<PdfDocument[]>([])
   const [pages, setPages] = useState<PdfPage[]>([])
@@ -24,13 +28,9 @@ export default function App() {
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
   const [showSaveWarning, setShowSaveWarning] = useState(false)
 
-  // Page history for undo/redo
-  const [pageHistory, setPageHistory] = useState<{ pages: PdfPage[]; selectedIndex: number }[]>([])
-  const [pageFuture, setPageFuture] = useState<{ pages: PdfPage[]; selectedIndex: number }[]>([])
-
-  // Track order of operations for unified undo (which system was modified last)
-  const [historyOrder, setHistoryOrder] = useState<HistoryEntry[]>([])
-  const [futureOrder, setFutureOrder] = useState<HistoryEntry[]>([])
+  // Unified history for undo/redo (tracks both page and annotation operations)
+  const [historyStack, setHistoryStack] = useState<HistoryEntry[]>([])
+  const [futureStack, setFutureStack] = useState<HistoryEntry[]>([])
 
   // Track initial page state to detect changes
   const initialPagesRef = useRef<string>('')
@@ -89,10 +89,7 @@ export default function App() {
         setPages(prev => {
           const updated = [...prev, ...newPages]
           // Update initial state reference
-          initialPagesRef.current = JSON.stringify(updated.map(p => ({
-            documentId: p.documentId,
-            originalPageIndex: p.originalPageIndex
-          })))
+          initialPagesRef.current = serializePageState(updated)
           return updated
         })
 
@@ -117,10 +114,7 @@ export default function App() {
       return
     }
 
-    const currentState = JSON.stringify(pages.map(p => ({
-      documentId: p.documentId,
-      originalPageIndex: p.originalPageIndex
-    })))
+    const currentState = serializePageState(pages)
 
     if (initialPagesRef.current && currentState !== initialPagesRef.current) {
       setHasUnsavedChanges(true)
@@ -129,17 +123,14 @@ export default function App() {
 
   // Push current page state to history before making changes
   const pushPageToHistory = useCallback(() => {
-    setPageHistory(prev => {
-      const newHistory = [...prev, { pages, selectedIndex: selectedPageIndex }]
+    setHistoryStack(prev => {
+      const newHistory = [...prev, { type: 'pages' as const, pages, selectedIndex: selectedPageIndex }]
       if (newHistory.length > MAX_PAGE_HISTORY) {
         return newHistory.slice(-MAX_PAGE_HISTORY)
       }
       return newHistory
     })
-    setPageFuture([])
-    // Track this in the unified history order
-    setHistoryOrder(prev => [...prev, { type: 'pages', pages, selectedIndex: selectedPageIndex }])
-    setFutureOrder([])
+    setFutureStack([])
   }, [pages, selectedPageIndex])
 
   const handleReorder = useCallback((oldIndex: number, newIndex: number) => {
@@ -188,10 +179,7 @@ export default function App() {
       if (success) {
         setHasUnsavedChanges(false)
         // Update initial state to current
-        initialPagesRef.current = JSON.stringify(pages.map(p => ({
-          documentId: p.documentId,
-          originalPageIndex: p.originalPageIndex
-        })))
+        initialPagesRef.current = serializePageState(pages)
       }
     } catch (error) {
       console.error('Save As failed:', error)
@@ -223,10 +211,7 @@ export default function App() {
       const success = await saveToFile(currentFilePath, pages)
       if (success) {
         setHasUnsavedChanges(false)
-        initialPagesRef.current = JSON.stringify(pages.map(p => ({
-          documentId: p.documentId,
-          originalPageIndex: p.originalPageIndex
-        })))
+        initialPagesRef.current = serializePageState(pages)
       }
     } catch (error) {
       console.error('Save failed:', error)
@@ -234,90 +219,78 @@ export default function App() {
     }
   }, [pages, documents.length, currentFilePath, showSaveWarning, handleSaveAs])
 
-  // Page undo - restores previous page state
-  const pageUndo = useCallback(() => {
-    if (pageHistory.length === 0) return false
-    const previousState = pageHistory[pageHistory.length - 1]
-    setPageHistory(prev => prev.slice(0, -1))
-    setPageFuture(prev => [{ pages, selectedIndex: selectedPageIndex }, ...prev])
-    setPages(previousState.pages)
-    setSelectedPageIndex(previousState.selectedIndex)
-    return true
-  }, [pageHistory, pages, selectedPageIndex])
+  // Page undo - restores previous page state from history stack
+  const pageUndo = useCallback((entry: HistoryEntry & { type: 'pages' }) => {
+    setFutureStack(prev => [{ type: 'pages', pages, selectedIndex: selectedPageIndex }, ...prev])
+    setPages(entry.pages)
+    setSelectedPageIndex(entry.selectedIndex)
+  }, [pages, selectedPageIndex])
 
-  // Page redo - restores next page state
-  const pageRedo = useCallback(() => {
-    if (pageFuture.length === 0) return false
-    const nextState = pageFuture[0]
-    setPageFuture(prev => prev.slice(1))
-    setPageHistory(prev => [...prev, { pages, selectedIndex: selectedPageIndex }])
-    setPages(nextState.pages)
-    setSelectedPageIndex(nextState.selectedIndex)
-    return true
-  }, [pageFuture, pages, selectedPageIndex])
+  // Page redo - restores next page state from future stack
+  const pageRedo = useCallback((entry: HistoryEntry & { type: 'pages' }) => {
+    setHistoryStack(prev => [...prev, { type: 'pages', pages, selectedIndex: selectedPageIndex }])
+    setPages(entry.pages)
+    setSelectedPageIndex(entry.selectedIndex)
+  }, [pages, selectedPageIndex])
 
   // Wrapped annotation functions that track in unified history
   const wrappedAddAnnotation = useCallback((annotation: Parameters<typeof addAnnotation>[0]) => {
-    setHistoryOrder(prev => [...prev, { type: 'annotations' }])
-    setFutureOrder([])
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
     addAnnotation(annotation)
   }, [addAnnotation])
 
   const wrappedUpdateAnnotation = useCallback((id: string, updates: Parameters<typeof updateAnnotation>[1]) => {
-    setHistoryOrder(prev => [...prev, { type: 'annotations' }])
-    setFutureOrder([])
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
     updateAnnotation(id, updates)
   }, [updateAnnotation])
 
   const wrappedDeleteAnnotation = useCallback((id: string) => {
-    setHistoryOrder(prev => [...prev, { type: 'annotations' }])
-    setFutureOrder([])
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
     deleteAnnotation(id)
   }, [deleteAnnotation])
 
-  // Unified undo - checks historyOrder to determine what to undo
+  // Unified undo - checks history stack to determine what to undo
   const unifiedUndo = useCallback(() => {
-    if (historyOrder.length === 0) return
+    if (historyStack.length === 0) return
 
-    const lastEntry = historyOrder[historyOrder.length - 1]
+    const lastEntry = historyStack[historyStack.length - 1]
+    setHistoryStack(prev => prev.slice(0, -1))
+
     if (lastEntry.type === 'pages') {
-      if (pageUndo()) {
-        setHistoryOrder(prev => prev.slice(0, -1))
-        setFutureOrder(prev => [lastEntry, ...prev])
-      }
+      pageUndo(lastEntry)
     } else {
       // Annotation undo
       if (canUndo) {
         undo()
-        setHistoryOrder(prev => prev.slice(0, -1))
-        setFutureOrder(prev => [lastEntry, ...prev])
+        setFutureStack(prev => [lastEntry, ...prev])
       }
     }
-  }, [historyOrder, pageUndo, canUndo, undo])
+  }, [historyStack, pageUndo, canUndo, undo])
 
-  // Unified redo - checks futureOrder to determine what to redo
+  // Unified redo - checks future stack to determine what to redo
   const unifiedRedo = useCallback(() => {
-    if (futureOrder.length === 0) return
+    if (futureStack.length === 0) return
 
-    const nextEntry = futureOrder[0]
+    const nextEntry = futureStack[0]
+    setFutureStack(prev => prev.slice(1))
+
     if (nextEntry.type === 'pages') {
-      if (pageRedo()) {
-        setFutureOrder(prev => prev.slice(1))
-        setHistoryOrder(prev => [...prev, nextEntry])
-      }
+      pageRedo(nextEntry)
     } else {
       // Annotation redo
       if (canRedo) {
         redo()
-        setFutureOrder(prev => prev.slice(1))
-        setHistoryOrder(prev => [...prev, nextEntry])
+        setHistoryStack(prev => [...prev, nextEntry])
       }
     }
-  }, [futureOrder, pageRedo, canRedo, redo])
+  }, [futureStack, pageRedo, canRedo, redo])
 
   // Combined undo/redo availability
-  const combinedCanUndo = historyOrder.length > 0
-  const combinedCanRedo = futureOrder.length > 0
+  const combinedCanUndo = historyStack.length > 0
+  const combinedCanRedo = futureStack.length > 0
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -535,7 +508,6 @@ export default function App() {
           textSize={toolSettings.textSize}
           onAddAnnotation={wrappedAddAnnotation}
           onUpdateAnnotation={wrappedUpdateAnnotation}
-          onDeleteAnnotation={wrappedDeleteAnnotation}
           onSelectAnnotation={selectAnnotation}
         />
       </div>

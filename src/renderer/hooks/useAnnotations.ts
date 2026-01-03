@@ -41,7 +41,6 @@ export interface UseAnnotationsReturn {
   setCurrentTool: (tool: AnnotationTool) => void
   updateToolSettings: (updates: Partial<AnnotationToolSettings>) => void
   getAnnotationsForPage: (pageId: string) => Annotation[]
-  clearAnnotationsForPage: (pageId: string) => void
   undo: () => void
   redo: () => void
   discardAllAnnotations: () => void
@@ -117,13 +116,6 @@ export function useAnnotations(): UseAnnotationsReturn {
     [annotations]
   )
 
-  const clearAnnotationsForPage = useCallback((pageId: string) => {
-    setAnnotations(prev => {
-      pushToHistory(prev)
-      return prev.filter(ann => ann.pageId !== pageId)
-    })
-  }, [pushToHistory])
-
   const undo = useCallback(() => {
     if (history.length === 0) return
 
@@ -168,7 +160,6 @@ export function useAnnotations(): UseAnnotationsReturn {
     setCurrentTool,
     updateToolSettings,
     getAnnotationsForPage,
-    clearAnnotationsForPage,
     undo,
     redo,
     discardAllAnnotations

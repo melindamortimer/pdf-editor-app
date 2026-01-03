@@ -263,34 +263,6 @@ describe('useAnnotations', () => {
     })
   })
 
-  describe('clearAnnotationsForPage', () => {
-    it('removes all annotations for specified page', () => {
-      const { result } = renderHook(() => useAnnotations())
-
-      act(() => {
-        result.current.addAnnotation({
-          id: 'ann-1', pageId: 'page-1', type: 'highlight',
-          x: 0.1, y: 0.2, width: 0.3, height: 0.05, color: 'yellow'
-        })
-        result.current.addAnnotation({
-          id: 'ann-2', pageId: 'page-2', type: 'highlight',
-          x: 0.2, y: 0.3, width: 0.3, height: 0.05, color: 'green'
-        })
-        result.current.addAnnotation({
-          id: 'ann-3', pageId: 'page-1', type: 'highlight',
-          x: 0.3, y: 0.4, width: 0.3, height: 0.05, color: 'blue'
-        })
-      })
-
-      act(() => {
-        result.current.clearAnnotationsForPage('page-1')
-      })
-
-      expect(result.current.annotations).toHaveLength(1)
-      expect(result.current.annotations[0].pageId).toBe('page-2')
-    })
-  })
-
   describe('undo/redo', () => {
     it('starts with canUndo and canRedo as false', () => {
       const { result } = renderHook(() => useAnnotations())

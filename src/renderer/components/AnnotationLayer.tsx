@@ -32,7 +32,6 @@ interface AnnotationLayerProps {
   // Callbacks
   onAddAnnotation: (annotation: Annotation) => void
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
-  onDeleteAnnotation: (id: string) => void
   onSelectAnnotation: (id: string | null) => void
 }
 
@@ -62,7 +61,6 @@ export default function AnnotationLayer({
   textSize,
   onAddAnnotation,
   onUpdateAnnotation,
-  onDeleteAnnotation,
   onSelectAnnotation
 }: AnnotationLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null)
@@ -121,6 +119,27 @@ export default function AnnotationLayer({
     }
   }, [])
 
+  // Check if a point hits an annotation
+  const hitTestAnnotation = useCallback((pos: { x: number; y: number }, ann: Annotation): boolean => {
+    const annPos = toPixels(ann.x, ann.y)
+    const annWidth = ann.width * canvasWidth
+    const annHeight = ann.height * canvasHeight
+    return (
+      pos.x >= annPos.x &&
+      pos.x <= annPos.x + annWidth &&
+      pos.y >= annPos.y &&
+      pos.y <= annPos.y + annHeight
+    )
+  }, [toPixels, canvasWidth, canvasHeight])
+
+  // Find annotation at position, optionally filtered by type
+  const findAnnotationAt = useCallback((pos: { x: number; y: number }, typeFilter?: Annotation['type']): Annotation | undefined => {
+    return annotations.find(ann => {
+      if (typeFilter && ann.type !== typeFilter) return false
+      return hitTestAnnotation(pos, ann)
+    })
+  }, [annotations, hitTestAnnotation])
+
   // Handle mouse down
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return // Only left click
@@ -129,18 +148,7 @@ export default function AnnotationLayer({
 
     // Check if clicking on an existing annotation (for select tool or any tool)
     if (currentTool === 'select') {
-      // Find annotation at click position
-      const clickedAnnotation = annotations.find(ann => {
-        const annPos = toPixels(ann.x, ann.y)
-        const annWidth = ann.width * canvasWidth
-        const annHeight = ann.height * canvasHeight
-        return (
-          pos.x >= annPos.x &&
-          pos.x <= annPos.x + annWidth &&
-          pos.y >= annPos.y &&
-          pos.y <= annPos.y + annHeight
-        )
-      })
+      const clickedAnnotation = findAnnotationAt(pos)
 
       if (clickedAnnotation) {
         onSelectAnnotation(clickedAnnotation.id)
@@ -173,19 +181,7 @@ export default function AnnotationLayer({
 
     // Text tool - place text at click position or edit existing text
     if (currentTool === 'text') {
-      // First check if clicking on an existing text annotation
-      const clickedTextAnnotation = annotations.find(ann => {
-        if (ann.type !== 'text') return false
-        const annPos = toPixels(ann.x, ann.y)
-        const annWidth = ann.width * canvasWidth
-        const annHeight = ann.height * canvasHeight
-        return (
-          pos.x >= annPos.x &&
-          pos.x <= annPos.x + annWidth &&
-          pos.y >= annPos.y &&
-          pos.y <= annPos.y + annHeight
-        )
-      })
+      const clickedTextAnnotation = findAnnotationAt(pos, 'text')
 
       if (clickedTextAnnotation) {
         // Edit existing text annotation
@@ -240,7 +236,7 @@ export default function AnnotationLayer({
       setIsPlaceholderText(true)
       justStartedEditing.current = true
     }
-  }, [currentTool, annotations, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, toPixels, onAddAnnotation, onUpdateAnnotation, onSelectAnnotation, textFont, textSize, textColor, editingTextId, editingContent])
+  }, [currentTool, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, findAnnotationAt, onAddAnnotation, onUpdateAnnotation, onSelectAnnotation, textFont, textSize, textColor, editingTextId, editingContent])
 
   // Handle mouse move
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -393,25 +389,12 @@ export default function AnnotationLayer({
     if (currentTool !== 'select') return
 
     const pos = getMousePos(e)
-
-    // Find text annotation at click position
-    const clickedAnnotation = annotations.find(ann => {
-      if (ann.type !== 'text') return false
-      const annPos = toPixels(ann.x, ann.y)
-      const annWidth = ann.width * canvasWidth
-      const annHeight = ann.height * canvasHeight
-      return (
-        pos.x >= annPos.x &&
-        pos.x <= annPos.x + annWidth &&
-        pos.y >= annPos.y &&
-        pos.y <= annPos.y + annHeight
-      )
-    })
+    const clickedAnnotation = findAnnotationAt(pos, 'text')
 
     if (clickedAnnotation) {
       startTextEdit(clickedAnnotation)
     }
-  }, [currentTool, annotations, canvasWidth, canvasHeight, getMousePos, toPixels, startTextEdit])
+  }, [currentTool, getMousePos, findAnnotationAt, startTextEdit])
 
   // Render a single annotation
   const renderAnnotation = (annotation: Annotation) => {
@@ -506,7 +489,7 @@ export default function AnnotationLayer({
                 style={{
                   fontFamily: annotation.font,
                   fontSize: annotation.fontSize * zoom,
-                  color: isPlaceholderText ? annotation.color : annotation.color
+                  color: annotation.color
                 }}
               />
             ) : (
