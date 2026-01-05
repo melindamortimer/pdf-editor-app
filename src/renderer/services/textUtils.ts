@@ -145,13 +145,16 @@ export function getSelectedWords(
   }
 
   // Determine horizontal bounds of the selection from start and end positions
-  const startBox = lines[startLine]?.boxes[startWord]
-  const endBox = lines[endLine]?.boxes[endWord]
-  if (!startBox || !endBox) return []
+  const startLineData = lines[startLine]
+  const endLineData = lines[endLine]
+  const startBox = startLineData?.boxes[startWord]
+  const endBox = endLineData?.boxes[endWord]
+  if (!startBox || !endBox || !startLineData || !endLineData) return []
 
-  // Selection X range: from leftmost to rightmost selected position
-  const selectionMinX = Math.min(startBox.x, endBox.x)
-  const selectionMaxX = Math.max(startBox.x + startBox.width, endBox.x + endBox.width)
+  // Determine column bounds based on start and end lines
+  // Use the full line extents to define the column, not just the selected words
+  const columnLeft = Math.min(startLineData.minX, endLineData.minX)
+  const columnRight = Math.max(startLineData.maxX, endLineData.maxX)
 
   const result: SelectedLineWords[] = []
 
@@ -159,9 +162,11 @@ export function getSelectedWords(
     const line = lines[lineIdx]
     if (!line) continue
 
-    // Skip lines that don't horizontally overlap with selection region
-    const lineOverlaps = line.maxX >= selectionMinX && line.minX <= selectionMaxX
-    if (!lineOverlaps) continue
+    // Include line if its center is within the column bounds (with some tolerance)
+    // This handles both wrapped text AND end-of-line fragments that got split
+    const lineCenter = (line.minX + line.maxX) / 2
+    const inColumn = lineCenter >= columnLeft - 50 && lineCenter <= columnRight + 50
+    if (!inColumn) continue
 
     let fromWord: number
     let toWord: number
