@@ -172,7 +172,7 @@ export default function MainViewer({
               onAddAnnotation={onAddAnnotation}
               onUpdateAnnotation={onUpdateAnnotation}
               onDeleteAnnotation={onDeleteAnnotation}
-              debug={true}
+              debug={false}
             />
           )}
           {hasContent && pageId && canvasDimensions.width > 0 && (

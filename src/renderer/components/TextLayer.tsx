@@ -454,6 +454,53 @@ export default function TextLayer({
   // Get preview boxes for current selection
   const previewBoxes = selection ? getSelectedWords(lines, selection) : []
 
+  // Check if current selection would trigger a toggle-off (all selected covered by same type/color)
+  const isToggleOff = (() => {
+    if (previewBoxes.length === 0) return false
+    if (!isTextTool) return false
+
+    const tool = currentTool as 'highlight' | 'underline' | 'strikethrough'
+    const color = currentTool === 'highlight' ? highlightColor : lineColor
+
+    // Clear mode is always "erase" mode, not toggle
+    const isClearMode = (currentTool === 'highlight' && highlightColor === 'clear') ||
+                        ((currentTool === 'underline' || currentTool === 'strikethrough') && lineColor === 'transparent')
+    if (isClearMode) return false
+
+    for (const lineSelection of previewBoxes) {
+      const bounds = {
+        x: lineSelection.minX / width,
+        y: lineSelection.y / height,
+        width: (lineSelection.maxX - lineSelection.minX) / width,
+        height: lineSelection.height / height
+      }
+
+      const overlapping = annotations.filter(ann => {
+        if (ann.pageId !== pageId) return false
+        if (ann.type !== tool) return false
+        if (!('color' in ann) || ann.color !== color) return false
+
+        const tolerance = 0.001
+        const overlapsX = bounds.x < ann.x + ann.width + tolerance && bounds.x + bounds.width > ann.x - tolerance
+        const overlapsY = bounds.y < ann.y + ann.height + tolerance && bounds.y + bounds.height > ann.y - tolerance
+        return overlapsX && overlapsY
+      })
+
+      if (overlapping.length === 0) return false
+
+      const fullyCovered = overlapping.some(ann =>
+        ann.x <= bounds.x + 0.001 &&
+        ann.x + ann.width >= bounds.x + bounds.width - 0.001 &&
+        ann.y <= bounds.y + 0.001 &&
+        ann.y + ann.height >= bounds.y + bounds.height - 0.001
+      )
+
+      if (!fullyCovered) return false
+    }
+
+    return true
+  })()
+
   return (
     <div
       className={`text-layer ${debug ? 'debug' : ''} ${isTextTool ? 'text-tool-active' : ''}`}
@@ -484,24 +531,26 @@ export default function TextLayer({
         const lineThickness = Math.max(1, Math.round(lineSelection.height * 0.08))
         const isClearMode = (currentTool === 'highlight' && highlightColor === 'clear') ||
                             ((currentTool === 'underline' || currentTool === 'strikethrough') && lineColor === 'transparent')
+        // Show erase-style preview when in clear mode OR when toggling off
+        const showErasePreview = isClearMode || isToggleOff
         return (
           <div
             key={`preview-${i}`}
-            className={`selection-preview ${currentTool} ${isClearMode ? 'clear-mode' : ''}`}
+            className={`selection-preview ${currentTool} ${showErasePreview ? 'clear-mode' : ''}`}
             style={{
               left: lineSelection.minX,
-              // Clear mode always shows full text height, not just line
-              top: !isClearMode && currentTool === 'underline'
+              // Erase preview always shows full text height, not just line
+              top: !showErasePreview && currentTool === 'underline'
                 ? lineSelection.y + lineSelection.height
-                : !isClearMode && currentTool === 'strikethrough'
+                : !showErasePreview && currentTool === 'strikethrough'
                   // Position at ~65% down to account for descenders (p, g, y, etc.)
                   ? lineSelection.y + lineSelection.height * 0.65 - lineThickness / 2
                   : lineSelection.y,
               width: lineSelection.maxX - lineSelection.minX,
-              height: !isClearMode && (currentTool === 'underline' || currentTool === 'strikethrough')
+              height: !showErasePreview && (currentTool === 'underline' || currentTool === 'strikethrough')
                 ? lineThickness
                 : lineSelection.height,
-              backgroundColor: isClearMode
+              backgroundColor: showErasePreview
                 ? 'rgba(255, 0, 0, 0.15)'
                 : currentTool === 'highlight'
                   ? HIGHLIGHT_COLORS_TRANSPARENT[highlightColor]
