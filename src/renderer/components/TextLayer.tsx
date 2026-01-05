@@ -54,7 +54,7 @@ export default function TextLayer({
   const mouseMoved = useRef(false)
 
   // Is this a text-selection tool?
-  const isTextTool = currentTool === 'highlight' || currentTool === 'underline' || currentTool === 'strikethrough'
+  const isTextTool = currentTool === 'highlight' || currentTool === 'underline' || currentTool === 'strikethrough' || currentTool === 'eraser'
 
   useEffect(() => {
     if (!documentId) return
@@ -242,12 +242,90 @@ export default function TextLayer({
       return
     }
 
+    // Eraser tool - erase all text annotations (highlights, underlines, strikethroughs)
+    if (currentTool === 'eraser') {
+      const toDelete = new Set<string>()
+      const toUpdate: Map<string, Partial<Annotation>> = new Map()
+      const toAdd: Annotation[] = []
+
+      for (const lineSelection of selectedWords) {
+        const eraseBounds = {
+          x: lineSelection.minX / width,
+          y: lineSelection.y / height,
+          width: (lineSelection.maxX - lineSelection.minX) / width,
+          height: lineSelection.height / height
+        }
+
+        // Find all text annotations that overlap (any type, any color)
+        const overlapping = annotations.filter(ann => {
+          if (ann.pageId !== pageId) return false
+          if (ann.type !== 'highlight' && ann.type !== 'underline' && ann.type !== 'strikethrough') return false
+
+          const tolerance = 0.001
+          const overlapsX = eraseBounds.x < ann.x + ann.width + tolerance && eraseBounds.x + eraseBounds.width > ann.x - tolerance
+          const overlapsY = eraseBounds.y < ann.y + ann.height + tolerance && eraseBounds.y + eraseBounds.height > ann.y - tolerance
+          return overlapsX && overlapsY
+        })
+
+        for (const ann of overlapping) {
+          if (toDelete.has(ann.id)) continue
+
+          const annLeft = ann.x
+          const annRight = ann.x + ann.width
+          const eraseLeft = eraseBounds.x
+          const eraseRight = eraseBounds.x + eraseBounds.width
+          const tolerance = 0.001
+
+          // Case 1: Erase fully covers annotation → delete it
+          if (eraseLeft <= annLeft + tolerance && eraseRight >= annRight - tolerance) {
+            toDelete.add(ann.id)
+            toUpdate.delete(ann.id)
+            continue
+          }
+
+          // Case 2: Erase covers left side → shrink from left
+          if (eraseLeft <= annLeft + tolerance && eraseRight < annRight - tolerance) {
+            const newX = eraseRight
+            const newWidth = annRight - eraseRight
+            toUpdate.set(ann.id, { x: newX, width: newWidth })
+            continue
+          }
+
+          // Case 3: Erase covers right side → shrink from right
+          if (eraseLeft > annLeft + tolerance && eraseRight >= annRight - tolerance) {
+            const newWidth = eraseLeft - annLeft
+            toUpdate.set(ann.id, { width: newWidth })
+            continue
+          }
+
+          // Case 4: Erase is in the middle → split into two
+          if (eraseLeft > annLeft + tolerance && eraseRight < annRight - tolerance) {
+            toUpdate.set(ann.id, { width: eraseLeft - annLeft })
+            const rightPortion: Annotation = {
+              ...ann,
+              id: crypto.randomUUID(),
+              x: eraseRight,
+              width: annRight - eraseRight
+            }
+            toAdd.push(rightPortion)
+          }
+        }
+      }
+
+      toDelete.forEach(id => onDeleteAnnotation(id))
+      toUpdate.forEach((updates, id) => onUpdateAnnotation(id, updates))
+      toAdd.forEach(ann => onAddAnnotation(ann))
+
+      setSelection(null)
+      return
+    }
+
     const tool = currentTool as 'highlight' | 'underline' | 'strikethrough'
     const color = currentTool === 'highlight' ? highlightColor : lineColor
     const isClearMode = (currentTool === 'highlight' && highlightColor === 'clear') ||
                         ((currentTool === 'underline' || currentTool === 'strikethrough') && lineColor === 'transparent')
 
-    // Clear mode - erase the selected portion of overlapping annotations
+    // Clear mode - erase the selected portion of overlapping annotations of the same type
     if (isClearMode) {
       const toDelete = new Set<string>()
       const toUpdate: Map<string, Partial<Annotation>> = new Map()
@@ -467,6 +545,8 @@ export default function TextLayer({
   const isToggleOff = (() => {
     if (previewBoxes.length === 0) return false
     if (!isTextTool) return false
+    // Eraser tool is always erase mode, not toggle
+    if (currentTool === 'eraser') return false
 
     const tool = currentTool as 'highlight' | 'underline' | 'strikethrough'
     const color = currentTool === 'highlight' ? highlightColor : lineColor
@@ -540,8 +620,8 @@ export default function TextLayer({
         const lineThickness = Math.max(1, Math.round(lineSelection.height * 0.08))
         const isClearMode = (currentTool === 'highlight' && highlightColor === 'clear') ||
                             ((currentTool === 'underline' || currentTool === 'strikethrough') && lineColor === 'transparent')
-        // Show erase-style preview when in clear mode OR when toggling off
-        const showErasePreview = isClearMode || isToggleOff
+        // Show erase-style preview when in clear mode, eraser tool, OR when toggling off
+        const showErasePreview = isClearMode || currentTool === 'eraser' || isToggleOff
         return (
           <div
             key={`preview-${i}`}

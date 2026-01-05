@@ -19,7 +19,8 @@ const ANNOTATION_TOOLS: { id: AnnotationTool; label: string; icon: string }[] = 
   { id: 'underline', label: 'Underline', icon: 'U' },
   { id: 'strikethrough', label: 'Strikethrough', icon: 'S' },
   { id: 'box', label: 'Box', icon: '☐' },
-  { id: 'text', label: 'Text', icon: 'T' }
+  { id: 'text', label: 'Text', icon: 'T' },
+  { id: 'eraser', label: 'Eraser', icon: '⌫' }
 ]
 
 const HIGHLIGHT_COLOR_OPTIONS: { id: HighlightColor; label: string }[] = [

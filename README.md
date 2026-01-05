@@ -38,6 +38,7 @@ A desktop application for viewing PDFs, reordering pages, merging multiple docum
 | **Strikethrough** | Horizontal line through text. Colors: black, red, blue. Clear option to erase. |
 | **Box** | Rectangle with customizable border color, fill color, and thickness (thin/medium/thick) |
 | **Text** | Placed text with font selection, size, and color |
+| **Eraser** | Select text to erase all text annotations (highlights, underlines, strikethroughs) |
 
 **Text-based annotations** (highlight, underline, strikethrough):
 - Click and drag over PDF text to select words

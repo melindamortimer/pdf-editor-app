@@ -6,6 +6,7 @@ export type AnnotationTool =
   | 'strikethrough'
   | 'box'
   | 'text'
+  | 'eraser'
 
 // Colors for highlight tool ('clear' is used to erase highlights)
 export type HighlightColor = 'yellow' | 'green' | 'pink' | 'orange' | 'clear'

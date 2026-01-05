@@ -132,8 +132,8 @@ describe('Annotation Types', () => {
 
   describe('AnnotationTool type', () => {
     it('includes all tools', () => {
-      const tools: AnnotationTool[] = ['select', 'highlight', 'underline', 'strikethrough', 'box', 'text']
-      expect(tools).toHaveLength(6)
+      const tools: AnnotationTool[] = ['select', 'highlight', 'underline', 'strikethrough', 'box', 'text', 'eraser']
+      expect(tools).toHaveLength(7)
     })
   })
 })

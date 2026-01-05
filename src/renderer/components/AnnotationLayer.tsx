@@ -722,8 +722,8 @@ export default function AnnotationLayer({
     }
   }
 
-  // Text tools (highlight, underline, strikethrough) are handled by TextLayer
-  const isTextTool = currentTool === 'highlight' || currentTool === 'underline' || currentTool === 'strikethrough'
+  // Text tools (highlight, underline, strikethrough, eraser) are handled by TextLayer
+  const isTextTool = currentTool === 'highlight' || currentTool === 'underline' || currentTool === 'strikethrough' || currentTool === 'eraser'
 
   return (
     <div
