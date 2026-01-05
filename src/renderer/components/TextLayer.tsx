@@ -79,10 +79,11 @@ export default function TextLayer({
           if (!('str' in item) || !item.str.trim()) continue
 
           const transform = item.transform
-          const x = transform[4]
-          const y = viewport.height - transform[5]
-          const itemWidth = item.width
-          const itemHeight = Math.abs(transform[3])
+          // Transform coordinates are in PDF space, need to scale them
+          const x = transform[4] * scale
+          const y = viewport.height - transform[5] * scale
+          const itemWidth = item.width * scale
+          const itemHeight = Math.abs(transform[3]) * scale
           const baseY = y - itemHeight
           const str = item.str
 
@@ -98,9 +99,10 @@ export default function TextLayer({
 
           const fontStyle = isItalic ? 'italic ' : ''
           const fontWeight = isBold ? 'bold ' : ''
-          const fontSize = itemHeight
+          // Use fixed font size for measurement - scaleFactor will handle zoom and font differences
+          const measureFontSize = 16
 
-          measureCtx.font = `${fontStyle}${fontWeight}${fontSize}px ${fontFamily}, serif, sans-serif`
+          measureCtx.font = `${fontStyle}${fontWeight}${measureFontSize}px ${fontFamily}, serif, sans-serif`
 
           // Measure the full string to get scale factor
           const measuredFullWidth = measureCtx.measureText(str).width
