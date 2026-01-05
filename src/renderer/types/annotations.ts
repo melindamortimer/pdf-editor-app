@@ -7,8 +7,8 @@ export type AnnotationTool =
   | 'box'
   | 'text'
 
-// Colors for highlight tool
-export type HighlightColor = 'yellow' | 'green' | 'pink' | 'orange'
+// Colors for highlight tool ('clear' is used to erase highlights)
+export type HighlightColor = 'yellow' | 'green' | 'pink' | 'orange' | 'clear'
 
 // Box thickness options
 export type BoxThickness = 'thin' | 'medium' | 'thick'
@@ -81,7 +81,8 @@ export const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
   yellow: 'rgb(255, 235, 59)',
   green: 'rgb(76, 175, 80)',
   pink: 'rgb(233, 30, 99)',
-  orange: 'rgb(255, 152, 0)'
+  orange: 'rgb(255, 152, 0)',
+  clear: 'transparent'
 }
 
 // Semi-transparent colors for actual highlight annotations on PDF
@@ -89,7 +90,8 @@ export const HIGHLIGHT_COLORS_TRANSPARENT: Record<HighlightColor, string> = {
   yellow: 'rgba(255, 235, 59, 0.4)',
   green: 'rgba(76, 175, 80, 0.4)',
   pink: 'rgba(233, 30, 99, 0.35)',
-  orange: 'rgba(255, 152, 0, 0.4)'
+  orange: 'rgba(255, 152, 0, 0.4)',
+  clear: 'rgba(255, 0, 0, 0.15)'  // Light red tint to show eraser selection
 }
 
 // Box thickness in pixels (will be scaled by zoom)
@@ -108,16 +110,17 @@ export const DEFAULT_TEXT_FONT: TextFont = 'Arial'
 export const DEFAULT_TEXT_SIZE = 12
 export const DEFAULT_BOX_THICKNESS: BoxThickness = 'medium'
 
-// Line/box color options for picker
-export type LineColor = 'black' | 'red' | 'blue'
+// Line/box color options for picker ('clear' is used to erase underlines/strikethroughs)
+export type LineColor = 'black' | 'red' | 'blue' | 'clear'
 
 export const LINE_COLORS: Record<LineColor, string> = {
   black: '#000000',
   red: '#ff0000',
-  blue: '#0066cc'
+  blue: '#0066cc',
+  clear: 'transparent'
 }
 
-export const LINE_COLOR_OPTIONS: LineColor[] = ['black', 'red', 'blue']
+export const LINE_COLOR_OPTIONS: LineColor[] = ['black', 'red', 'blue']  // 'clear' added separately in picker
 
 // Font list for UI
 export const AVAILABLE_FONTS: TextFont[] = [

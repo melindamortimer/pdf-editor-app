@@ -27,7 +27,7 @@ interface TextLayerProps {
   annotations: Annotation[]
   onAddAnnotation: (annotation: Annotation) => void
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
-  onSelectAnnotation: (id: string | null) => void
+  onDeleteAnnotation: (id: string) => void
   debug?: boolean
 }
 
@@ -44,7 +44,7 @@ export default function TextLayer({
   annotations,
   onAddAnnotation,
   onUpdateAnnotation,
-  onSelectAnnotation,
+  onDeleteAnnotation,
   debug = false
 }: TextLayerProps) {
   const [textBoxes, setTextBoxes] = useState<TextBox[]>([])
@@ -200,6 +200,27 @@ export default function TextLayer({
     }
   }, [isDragging, selection, lines])
 
+  // Find all annotations that overlap with given bounds
+  const findOverlappingAnnotations = useCallback((
+    bounds: { x: number; y: number; width: number; height: number },
+    type?: 'highlight' | 'underline' | 'strikethrough',
+    color?: string
+  ): Annotation[] => {
+    return annotations.filter(ann => {
+      if (ann.pageId !== pageId) return false
+      if (ann.type !== 'highlight' && ann.type !== 'underline' && ann.type !== 'strikethrough') return false
+      if (type && ann.type !== type) return false
+      if (color && 'color' in ann && ann.color !== color) return false
+
+      // Check if bounds overlap (with small tolerance)
+      const tolerance = 0.001
+      const overlapsX = bounds.x < ann.x + ann.width + tolerance && bounds.x + bounds.width > ann.x - tolerance
+      const overlapsY = bounds.y < ann.y + ann.height + tolerance && bounds.y + bounds.height > ann.y - tolerance
+
+      return overlapsX && overlapsY
+    })
+  }, [annotations, pageId])
+
   const handleMouseUp = useCallback(() => {
     if (!isDragging || !selection) {
       setIsDragging(false)
@@ -208,35 +229,9 @@ export default function TextLayer({
 
     setIsDragging(false)
 
-    const tool = currentTool as 'highlight' | 'underline' | 'strikethrough'
-    const color = currentTool === 'highlight' ? highlightColor : lineColor
-
-    // Check if this is a click (mouse didn't move)
+    // Check if this is a click (mouse didn't move) - do nothing for clicks
     const isClick = !mouseMoved.current
-
     if (isClick) {
-      // Check if clicking on existing annotation of same type
-      const clickedBox = lines[selection.startLine]?.boxes[selection.startWord]
-      if (clickedBox) {
-        const clickX = (clickedBox.x + clickedBox.width / 2) / width
-        const clickY = (clickedBox.y + clickedBox.height / 2) / height
-
-        // Find annotation at this position
-        for (const ann of annotations) {
-          if (ann.pageId !== pageId || ann.type !== tool) continue
-          if ('color' in ann && ann.color !== color) continue
-
-          // Check if click is within annotation bounds
-          if (clickX >= ann.x && clickX <= ann.x + ann.width &&
-              clickY >= ann.y && clickY <= ann.y + ann.height) {
-            onSelectAnnotation(ann.id)
-            setSelection(null)
-            return
-          }
-        }
-      }
-
-      // No existing annotation found, don't create for single click
       setSelection(null)
       return
     }
@@ -244,6 +239,181 @@ export default function TextLayer({
     // Get selected words for drag selection
     const selectedWords = getSelectedWords(lines, selection)
     if (selectedWords.length === 0) {
+      setSelection(null)
+      return
+    }
+
+    const tool = currentTool as 'highlight' | 'underline' | 'strikethrough'
+    const color = currentTool === 'highlight' ? highlightColor : lineColor
+    const isClearMode = (currentTool === 'highlight' && highlightColor === 'clear') ||
+                        ((currentTool === 'underline' || currentTool === 'strikethrough') && lineColor === 'transparent')
+
+    // Clear mode - erase the selected portion of overlapping annotations
+    if (isClearMode) {
+      const toDelete = new Set<string>()
+      const toUpdate: Map<string, Partial<Annotation>> = new Map()
+      const toAdd: Annotation[] = []
+
+      for (const lineSelection of selectedWords) {
+        const eraseBounds = {
+          x: lineSelection.minX / width,
+          y: lineSelection.y / height,
+          width: (lineSelection.maxX - lineSelection.minX) / width,
+          height: lineSelection.height / height
+        }
+
+        const overlapping = findOverlappingAnnotations(eraseBounds, tool)
+
+        for (const ann of overlapping) {
+          // Skip if already marked for deletion
+          if (toDelete.has(ann.id)) continue
+
+          const annLeft = ann.x
+          const annRight = ann.x + ann.width
+          const eraseLeft = eraseBounds.x
+          const eraseRight = eraseBounds.x + eraseBounds.width
+          const tolerance = 0.001
+
+          // Case 1: Erase fully covers annotation → delete it
+          if (eraseLeft <= annLeft + tolerance && eraseRight >= annRight - tolerance) {
+            toDelete.add(ann.id)
+            toUpdate.delete(ann.id) // Remove any pending updates
+            continue
+          }
+
+          // Case 2: Erase covers left side → shrink from left
+          if (eraseLeft <= annLeft + tolerance && eraseRight < annRight - tolerance) {
+            const newX = eraseRight
+            const newWidth = annRight - eraseRight
+            toUpdate.set(ann.id, { x: newX, width: newWidth })
+            continue
+          }
+
+          // Case 3: Erase covers right side → shrink from right
+          if (eraseLeft > annLeft + tolerance && eraseRight >= annRight - tolerance) {
+            const newWidth = eraseLeft - annLeft
+            toUpdate.set(ann.id, { width: newWidth })
+            continue
+          }
+
+          // Case 4: Erase is in the middle → split into two
+          if (eraseLeft > annLeft + tolerance && eraseRight < annRight - tolerance) {
+            // Left portion: keep original x, shrink width
+            toUpdate.set(ann.id, { width: eraseLeft - annLeft })
+
+            // Right portion: create new annotation
+            const rightPortion: Annotation = {
+              ...ann,
+              id: crypto.randomUUID(),
+              x: eraseRight,
+              width: annRight - eraseRight
+            }
+            toAdd.push(rightPortion)
+          }
+        }
+      }
+
+      // Apply changes
+      toDelete.forEach(id => onDeleteAnnotation(id))
+      toUpdate.forEach((updates, id) => onUpdateAnnotation(id, updates))
+      toAdd.forEach(ann => onAddAnnotation(ann))
+
+      setSelection(null)
+      return
+    }
+
+    // Check if ALL selected lines are fully covered by existing annotations of same type/color
+    // If so, toggle off by removing just the selected portion (partial removal)
+    let allCovered = true
+    const coveringInfo: { bounds: { x: number; y: number; width: number; height: number }; annotations: Annotation[] }[] = []
+
+    for (const lineSelection of selectedWords) {
+      const bounds = {
+        x: lineSelection.minX / width,
+        y: lineSelection.y / height,
+        width: (lineSelection.maxX - lineSelection.minX) / width,
+        height: lineSelection.height / height
+      }
+
+      const overlapping = findOverlappingAnnotations(bounds, tool, color)
+
+      if (overlapping.length === 0) {
+        allCovered = false
+        break
+      }
+
+      // Check if any annotation fully covers this selection
+      const fullyCovered = overlapping.some(ann =>
+        ann.x <= bounds.x + 0.001 &&
+        ann.x + ann.width >= bounds.x + bounds.width - 0.001 &&
+        ann.y <= bounds.y + 0.001 &&
+        ann.y + ann.height >= bounds.y + bounds.height - 0.001
+      )
+
+      if (!fullyCovered) {
+        allCovered = false
+        break
+      }
+
+      coveringInfo.push({ bounds, annotations: overlapping })
+    }
+
+    if (allCovered && coveringInfo.length > 0) {
+      // Toggle off - remove just the selected portion (same logic as eraser)
+      const toDelete = new Set<string>()
+      const toUpdate: Map<string, Partial<Annotation>> = new Map()
+      const toAdd: Annotation[] = []
+
+      for (const { bounds: eraseBounds, annotations: overlapping } of coveringInfo) {
+        for (const ann of overlapping) {
+          if (toDelete.has(ann.id)) continue
+
+          const annLeft = ann.x
+          const annRight = ann.x + ann.width
+          const eraseLeft = eraseBounds.x
+          const eraseRight = eraseBounds.x + eraseBounds.width
+          const tolerance = 0.001
+
+          // Case 1: Erase fully covers annotation → delete it
+          if (eraseLeft <= annLeft + tolerance && eraseRight >= annRight - tolerance) {
+            toDelete.add(ann.id)
+            toUpdate.delete(ann.id)
+            continue
+          }
+
+          // Case 2: Erase covers left side → shrink from left
+          if (eraseLeft <= annLeft + tolerance && eraseRight < annRight - tolerance) {
+            const newX = eraseRight
+            const newWidth = annRight - eraseRight
+            toUpdate.set(ann.id, { x: newX, width: newWidth })
+            continue
+          }
+
+          // Case 3: Erase covers right side → shrink from right
+          if (eraseLeft > annLeft + tolerance && eraseRight >= annRight - tolerance) {
+            const newWidth = eraseLeft - annLeft
+            toUpdate.set(ann.id, { width: newWidth })
+            continue
+          }
+
+          // Case 4: Erase is in the middle → split into two
+          if (eraseLeft > annLeft + tolerance && eraseRight < annRight - tolerance) {
+            toUpdate.set(ann.id, { width: eraseLeft - annLeft })
+            const rightPortion: Annotation = {
+              ...ann,
+              id: crypto.randomUUID(),
+              x: eraseRight,
+              width: annRight - eraseRight
+            }
+            toAdd.push(rightPortion)
+          }
+        }
+      }
+
+      toDelete.forEach(id => onDeleteAnnotation(id))
+      toUpdate.forEach((updates, id) => onUpdateAnnotation(id, updates))
+      toAdd.forEach(ann => onAddAnnotation(ann))
+
       setSelection(null)
       return
     }
@@ -279,7 +449,7 @@ export default function TextLayer({
     }
 
     setSelection(null)
-  }, [isDragging, selection, lines, pageId, width, height, currentTool, highlightColor, lineColor, onAddAnnotation, onUpdateAnnotation, onSelectAnnotation, annotations])
+  }, [isDragging, selection, lines, pageId, width, height, currentTool, highlightColor, lineColor, onAddAnnotation, onUpdateAnnotation, onDeleteAnnotation, annotations, findOverlappingAnnotations])
 
   // Get preview boxes for current selection
   const previewBoxes = selection ? getSelectedWords(lines, selection) : []
@@ -312,27 +482,30 @@ export default function TextLayer({
       {previewBoxes.map((lineSelection, i) => {
         // Line thickness proportional to text height (about 8%, min 1px)
         const lineThickness = Math.max(1, Math.round(lineSelection.height * 0.08))
+        const isClearMode = (currentTool === 'highlight' && highlightColor === 'clear') ||
+                            ((currentTool === 'underline' || currentTool === 'strikethrough') && lineColor === 'transparent')
         return (
           <div
             key={`preview-${i}`}
-            className={`selection-preview ${currentTool}`}
+            className={`selection-preview ${currentTool} ${isClearMode ? 'clear-mode' : ''}`}
             style={{
               left: lineSelection.minX,
-              top: currentTool === 'underline'
+              // Clear mode always shows full text height, not just line
+              top: !isClearMode && currentTool === 'underline'
                 ? lineSelection.y + lineSelection.height
-                : currentTool === 'strikethrough'
+                : !isClearMode && currentTool === 'strikethrough'
                   // Position at ~65% down to account for descenders (p, g, y, etc.)
                   ? lineSelection.y + lineSelection.height * 0.65 - lineThickness / 2
                   : lineSelection.y,
               width: lineSelection.maxX - lineSelection.minX,
-              height: currentTool === 'underline' || currentTool === 'strikethrough'
+              height: !isClearMode && (currentTool === 'underline' || currentTool === 'strikethrough')
                 ? lineThickness
                 : lineSelection.height,
-              backgroundColor: currentTool === 'highlight'
-                ? HIGHLIGHT_COLORS_TRANSPARENT[highlightColor]
-                : currentTool === 'underline' || currentTool === 'strikethrough'
-                  ? lineColor
-                  : undefined
+              backgroundColor: isClearMode
+                ? 'rgba(255, 0, 0, 0.15)'
+                : currentTool === 'highlight'
+                  ? HIGHLIGHT_COLORS_TRANSPARENT[highlightColor]
+                  : lineColor
             }}
           />
         )

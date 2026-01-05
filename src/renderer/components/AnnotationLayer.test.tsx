@@ -157,11 +157,12 @@ describe('AnnotationLayer', () => {
   describe('Selection', () => {
     it('selects annotation when clicked with select tool', () => {
       const onSelectAnnotation = vi.fn()
-      const highlight = createHighlight({ x: 0.1, y: 0.1, width: 0.2, height: 0.1 })
+      // Use box annotation since highlight/underline/strikethrough can't be selected
+      const box = createBox({ x: 0.1, y: 0.1, width: 0.2, height: 0.1 })
       const { container } = renderWithProviders(
         <AnnotationLayer
           {...defaultProps}
-          annotations={[highlight]}
+          annotations={[box]}
           currentTool="select"
           onSelectAnnotation={onSelectAnnotation}
         />
@@ -171,7 +172,7 @@ describe('AnnotationLayer', () => {
       // Click inside the annotation (at x=120, y=150 which is within the annotation bounds)
       fireEvent.mouseDown(layer, { clientX: 120, clientY: 150, button: 0 })
 
-      expect(onSelectAnnotation).toHaveBeenCalledWith('highlight-1')
+      expect(onSelectAnnotation).toHaveBeenCalledWith('box-1')
     })
 
     it('clears selection when clicking empty area', () => {
@@ -397,11 +398,12 @@ describe('AnnotationLayer', () => {
   describe('Moving Annotations', () => {
     it('updates annotation position on drag', () => {
       const onUpdateAnnotation = vi.fn()
-      const highlight = createHighlight({ x: 0.1, y: 0.1, width: 0.2, height: 0.1 })
+      // Use box annotation since highlight/underline/strikethrough can't be selected
+      const box = createBox({ x: 0.1, y: 0.1, width: 0.2, height: 0.1 })
       const { container } = renderWithProviders(
         <AnnotationLayer
           {...defaultProps}
-          annotations={[highlight]}
+          annotations={[box]}
           currentTool="select"
           onUpdateAnnotation={onUpdateAnnotation}
         />
@@ -415,7 +417,7 @@ describe('AnnotationLayer', () => {
       fireEvent.mouseMove(layer, { clientX: 220, clientY: 250 })
 
       expect(onUpdateAnnotation).toHaveBeenCalled()
-      expect(onUpdateAnnotation.mock.calls[0][0]).toBe('highlight-1')
+      expect(onUpdateAnnotation.mock.calls[0][0]).toBe('box-1')
     })
   })
 

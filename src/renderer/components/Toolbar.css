@@ -257,3 +257,20 @@
 .has-changes:hover:not(:disabled) {
   background: #dd7700 !important;
 }
+
+/* Clear/eraser mode styles */
+.color-picker-button.clear-mode {
+  border: 2px dashed #888 !important;
+}
+
+.color-option.clear-option {
+  border: 2px dashed #888 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eraser-icon {
+  font-size: 14px;
+  color: #666;
+}

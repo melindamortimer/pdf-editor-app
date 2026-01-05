@@ -171,7 +171,7 @@ export default function MainViewer({
               annotations={annotations}
               onAddAnnotation={onAddAnnotation}
               onUpdateAnnotation={onUpdateAnnotation}
-              onSelectAnnotation={onSelectAnnotation}
+              onDeleteAnnotation={onDeleteAnnotation}
               debug={true}
             />
           )}

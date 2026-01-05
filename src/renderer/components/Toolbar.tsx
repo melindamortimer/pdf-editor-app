@@ -26,13 +26,15 @@ const HIGHLIGHT_COLOR_OPTIONS: { id: HighlightColor; label: string }[] = [
   { id: 'yellow', label: 'Yellow' },
   { id: 'green', label: 'Green' },
   { id: 'pink', label: 'Pink' },
-  { id: 'orange', label: 'Orange' }
+  { id: 'orange', label: 'Orange' },
+  { id: 'clear', label: 'Eraser' }
 ]
 
 const LINE_COLOR_LABELS: Record<LineColor, string> = {
   black: 'Black',
   red: 'Red',
-  blue: 'Blue'
+  blue: 'Blue',
+  clear: 'Eraser'
 }
 
 interface ToolbarProps {
@@ -195,11 +197,12 @@ export default function Toolbar({
         {currentTool === 'highlight' && (
           <div className="color-dropdown-container" ref={colorDropdownRef}>
             <button
-              className="color-picker-button"
+              className={`color-picker-button ${highlightColor === 'clear' ? 'clear-mode' : ''}`}
               onClick={() => setShowColorDropdown(!showColorDropdown)}
               title="Highlight color"
-              style={{ backgroundColor: HIGHLIGHT_COLORS[highlightColor] }}
+              style={{ backgroundColor: highlightColor === 'clear' ? '#ffffff' : HIGHLIGHT_COLORS[highlightColor] }}
             >
+              {highlightColor === 'clear' && <span className="eraser-icon">⌫</span>}
               <span className="dropdown-arrow">▼</span>
             </button>
             {showColorDropdown && (
@@ -207,14 +210,16 @@ export default function Toolbar({
                 {HIGHLIGHT_COLOR_OPTIONS.map(color => (
                   <button
                     key={color.id}
-                    className={`color-option ${highlightColor === color.id ? 'active' : ''}`}
+                    className={`color-option ${color.id === 'clear' ? 'clear-option' : ''} ${highlightColor === color.id ? 'active' : ''}`}
                     onClick={() => {
                       onHighlightColorChange(color.id)
                       setShowColorDropdown(false)
                     }}
-                    style={{ backgroundColor: HIGHLIGHT_COLORS[color.id] }}
+                    style={{ backgroundColor: color.id === 'clear' ? '#ffffff' : HIGHLIGHT_COLORS[color.id] }}
                     title={color.label}
-                  />
+                  >
+                    {color.id === 'clear' && <span className="eraser-icon">⌫</span>}
+                  </button>
                 ))}
               </div>
             )}
@@ -224,11 +229,12 @@ export default function Toolbar({
         {(currentTool === 'underline' || currentTool === 'strikethrough') && (
           <div className="color-dropdown-container" ref={lineColorDropdownRef}>
             <button
-              className="color-picker-button"
+              className={`color-picker-button ${lineColor === 'transparent' ? 'clear-mode' : ''}`}
               onClick={() => setShowLineColorDropdown(!showLineColorDropdown)}
               title="Line color"
-              style={{ backgroundColor: lineColor }}
+              style={{ backgroundColor: lineColor === 'transparent' ? '#ffffff' : lineColor }}
             >
+              {lineColor === 'transparent' && <span className="eraser-icon">⌫</span>}
               <span className="dropdown-arrow">▼</span>
             </button>
             {showLineColorDropdown && (
@@ -245,6 +251,18 @@ export default function Toolbar({
                     title={LINE_COLOR_LABELS[colorId]}
                   />
                 ))}
+                {/* Clear/eraser option */}
+                <button
+                  className={`color-option clear-option ${lineColor === 'transparent' ? 'active' : ''}`}
+                  onClick={() => {
+                    onLineColorChange('transparent')
+                    setShowLineColorDropdown(false)
+                  }}
+                  style={{ backgroundColor: '#ffffff' }}
+                  title="Eraser"
+                >
+                  <span className="eraser-icon">⌫</span>
+                </button>
               </div>
             )}
           </div>

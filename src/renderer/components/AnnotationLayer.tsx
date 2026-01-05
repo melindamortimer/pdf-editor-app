@@ -169,9 +169,17 @@ export default function AnnotationLayer({
   }, [toPixels, canvasWidth, canvasHeight])
 
   // Find annotation at position, optionally filtered by type
-  const findAnnotationAt = useCallback((pos: { x: number; y: number }, typeFilter?: Annotation['type']): Annotation | undefined => {
+  // excludeTextMarkings: exclude highlight/underline/strikethrough (they can't be selected)
+  const findAnnotationAt = useCallback((
+    pos: { x: number; y: number },
+    typeFilter?: Annotation['type'],
+    excludeTextMarkings = false
+  ): Annotation | undefined => {
     return annotations.find(ann => {
       if (typeFilter && ann.type !== typeFilter) return false
+      if (excludeTextMarkings && (ann.type === 'highlight' || ann.type === 'underline' || ann.type === 'strikethrough')) {
+        return false
+      }
       return hitTestAnnotation(pos, ann)
     })
   }, [annotations, hitTestAnnotation])
@@ -182,9 +190,10 @@ export default function AnnotationLayer({
 
     const pos = getMousePos(e)
 
-    // Check if clicking on an existing annotation (for select tool or any tool)
+    // Check if clicking on an existing annotation (for select tool)
+    // Exclude text markings (highlight/underline/strikethrough) - use eraser tool for those
     if (currentTool === 'select') {
-      const clickedAnnotation = findAnnotationAt(pos)
+      const clickedAnnotation = findAnnotationAt(pos, undefined, true)
 
       if (clickedAnnotation) {
         onSelectAnnotation(clickedAnnotation.id)
