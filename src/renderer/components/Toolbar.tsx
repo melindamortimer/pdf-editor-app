@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import type { AnnotationTool, HighlightColor, LineColor } from '../types/annotations'
-import { HIGHLIGHT_COLORS, LINE_COLORS, LINE_COLOR_OPTIONS } from '../types/annotations'
+import type { AnnotationTool, HighlightColor, LineColor, TextFont } from '../types/annotations'
+import { HIGHLIGHT_COLORS, LINE_COLORS, LINE_COLOR_OPTIONS, AVAILABLE_FONTS } from '../types/annotations'
 import './Toolbar.css'
+
+const TEXT_SIZE_OPTIONS = [10, 12, 14, 18, 24]
 
 const ZOOM_PRESETS = [
   { label: '50%', value: 0.5 },
@@ -15,12 +17,12 @@ const ZOOM_PRESETS = [
 
 const ANNOTATION_TOOLS: { id: AnnotationTool; label: string; icon: string }[] = [
   { id: 'select', label: 'Select', icon: '↖' },
+  { id: 'eraser', label: 'Eraser', icon: '⌫' },
   { id: 'highlight', label: 'Highlight', icon: '▮' },
   { id: 'underline', label: 'Underline', icon: 'U' },
   { id: 'strikethrough', label: 'Strikethrough', icon: 'S' },
   { id: 'box', label: 'Box', icon: '☐' },
-  { id: 'text', label: 'Text', icon: 'T' },
-  { id: 'eraser', label: 'Eraser', icon: '⌫' }
+  { id: 'text', label: 'Text', icon: 'T' }
 ]
 
 const HIGHLIGHT_COLOR_OPTIONS: { id: HighlightColor; label: string }[] = [
@@ -48,7 +50,10 @@ interface ToolbarProps {
   lineColor: string
   boxColor: string
   boxFillColor: string
-  selectedAnnotationType: 'box' | null // For showing box color pickers when a box is selected
+  textFont: TextFont
+  textSize: number
+  textColor: string
+  selectedAnnotationType: 'box' | 'text' | null // For showing tool options when annotation is selected
   canUndo: boolean
   canRedo: boolean
   onOpenFiles: () => void
@@ -61,6 +66,9 @@ interface ToolbarProps {
   onLineColorChange: (color: string) => void
   onBoxColorChange: (color: string) => void
   onBoxFillColorChange: (color: string) => void
+  onTextFontChange: (font: TextFont) => void
+  onTextSizeChange: (size: number) => void
+  onTextColorChange: (color: string) => void
   onUndo: () => void
   onRedo: () => void
   onDiscardAnnotations: () => void
@@ -76,6 +84,9 @@ export default function Toolbar({
   lineColor,
   boxColor,
   boxFillColor,
+  textFont,
+  textSize,
+  textColor,
   selectedAnnotationType,
   canUndo,
   canRedo,
@@ -89,6 +100,9 @@ export default function Toolbar({
   onLineColorChange,
   onBoxColorChange,
   onBoxFillColorChange,
+  onTextFontChange,
+  onTextSizeChange,
+  onTextColorChange,
   onUndo,
   onRedo,
   onDiscardAnnotations
@@ -98,11 +112,17 @@ export default function Toolbar({
   const [showLineColorDropdown, setShowLineColorDropdown] = useState(false)
   const [showBoxColorDropdown, setShowBoxColorDropdown] = useState(false)
   const [showBoxFillColorDropdown, setShowBoxFillColorDropdown] = useState(false)
+  const [showFontDropdown, setShowFontDropdown] = useState(false)
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false)
+  const [showTextColorDropdown, setShowTextColorDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const colorDropdownRef = useRef<HTMLDivElement>(null)
   const lineColorDropdownRef = useRef<HTMLDivElement>(null)
   const boxColorDropdownRef = useRef<HTMLDivElement>(null)
   const boxFillColorDropdownRef = useRef<HTMLDivElement>(null)
+  const fontDropdownRef = useRef<HTMLDivElement>(null)
+  const sizeDropdownRef = useRef<HTMLDivElement>(null)
+  const textColorDropdownRef = useRef<HTMLDivElement>(null)
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -121,6 +141,15 @@ export default function Toolbar({
       }
       if (boxFillColorDropdownRef.current && !boxFillColorDropdownRef.current.contains(e.target as Node)) {
         setShowBoxFillColorDropdown(false)
+      }
+      if (fontDropdownRef.current && !fontDropdownRef.current.contains(e.target as Node)) {
+        setShowFontDropdown(false)
+      }
+      if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(e.target as Node)) {
+        setShowSizeDropdown(false)
+      }
+      if (textColorDropdownRef.current && !textColorDropdownRef.current.contains(e.target as Node)) {
+        setShowTextColorDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -329,6 +358,94 @@ export default function Toolbar({
                       onClick={() => {
                         onBoxFillColorChange(LINE_COLORS[colorId])
                         setShowBoxFillColorDropdown(false)
+                      }}
+                      style={{ backgroundColor: LINE_COLORS[colorId] }}
+                      title={LINE_COLOR_LABELS[colorId]}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {(currentTool === 'text' || selectedAnnotationType === 'text') && (
+          <>
+            {/* Font dropdown */}
+            <div className="color-dropdown-container font-dropdown-container" ref={fontDropdownRef}>
+              <button
+                className="font-picker-button"
+                onClick={() => setShowFontDropdown(!showFontDropdown)}
+                title="Font"
+                style={{ fontFamily: textFont }}
+              >
+                {textFont}
+                <span className="dropdown-arrow">▼</span>
+              </button>
+              {showFontDropdown && (
+                <div className="font-dropdown">
+                  {AVAILABLE_FONTS.map(font => (
+                    <button
+                      key={font}
+                      className={textFont === font ? 'active' : ''}
+                      onClick={() => {
+                        onTextFontChange(font)
+                        setShowFontDropdown(false)
+                      }}
+                      style={{ fontFamily: font }}
+                    >
+                      {font}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Size dropdown */}
+            <div className="color-dropdown-container" ref={sizeDropdownRef}>
+              <button
+                className="size-picker-button"
+                onClick={() => setShowSizeDropdown(!showSizeDropdown)}
+                title="Font size"
+              >
+                {textSize}
+                <span className="dropdown-arrow">▼</span>
+              </button>
+              {showSizeDropdown && (
+                <div className="size-dropdown">
+                  {TEXT_SIZE_OPTIONS.map(size => (
+                    <button
+                      key={size}
+                      className={textSize === size ? 'active' : ''}
+                      onClick={() => {
+                        onTextSizeChange(size)
+                        setShowSizeDropdown(false)
+                      }}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Text color dropdown */}
+            <div className="color-dropdown-container" ref={textColorDropdownRef}>
+              <button
+                className="color-picker-button"
+                onClick={() => setShowTextColorDropdown(!showTextColorDropdown)}
+                title="Text color"
+                style={{ backgroundColor: textColor }}
+              >
+                <span className="dropdown-arrow">▼</span>
+              </button>
+              {showTextColorDropdown && (
+                <div className="color-dropdown">
+                  {LINE_COLOR_OPTIONS.map(colorId => (
+                    <button
+                      key={colorId}
+                      className={`color-option ${textColor === LINE_COLORS[colorId] ? 'active' : ''}`}
+                      onClick={() => {
+                        onTextColorChange(LINE_COLORS[colorId])
+                        setShowTextColorDropdown(false)
                       }}
                       style={{ backgroundColor: LINE_COLORS[colorId] }}
                       title={LINE_COLOR_LABELS[colorId]}

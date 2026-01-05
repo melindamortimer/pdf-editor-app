@@ -114,6 +114,29 @@ describe('Annotation Types', () => {
       expect(text.content).toBe('Hello World')
       expect(text.font).toBe('Arial')
     })
+
+    it('supports optional formatting properties', () => {
+      const formattedText: TextAnnotation = {
+        id: 't2',
+        pageId: 'page-1',
+        type: 'text',
+        x: 0.1,
+        y: 0.1,
+        width: 0.2,
+        height: 0.05,
+        content: 'Formatted Text',
+        font: 'Arial',
+        fontSize: 14,
+        color: '#000000',
+        bold: true,
+        italic: true,
+        underline: false
+      }
+
+      expect(formattedText.bold).toBe(true)
+      expect(formattedText.italic).toBe(true)
+      expect(formattedText.underline).toBe(false)
+    })
   })
 
   describe('Annotation union type', () => {
@@ -194,10 +217,10 @@ describe('Annotation Constants', () => {
     it('includes required fonts from spec', () => {
       expect(AVAILABLE_FONTS).toContain('Arial')
       expect(AVAILABLE_FONTS).toContain('Times New Roman')
-      expect(AVAILABLE_FONTS).toContain('Helvetica')
+      expect(AVAILABLE_FONTS).toContain('Verdana')
       expect(AVAILABLE_FONTS).toContain('Georgia')
-      expect(AVAILABLE_FONTS).toContain('Calibri')
-      expect(AVAILABLE_FONTS).toContain('Garamond')
+      expect(AVAILABLE_FONTS).toContain('Trebuchet MS')
+      expect(AVAILABLE_FONTS).toContain('Palatino')
       expect(AVAILABLE_FONTS).toContain('Courier New')
     })
   })

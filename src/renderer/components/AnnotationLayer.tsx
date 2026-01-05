@@ -674,6 +674,9 @@ export default function AnnotationLayer({
               fontFamily: annotation.font,
               fontSize: annotation.fontSize * zoom,
               color: annotation.color,
+              fontWeight: annotation.bold ? 'bold' : 'normal',
+              fontStyle: annotation.italic ? 'italic' : 'normal',
+              textDecoration: annotation.underline ? 'underline' : 'none',
               whiteSpace: 'pre-wrap',
               overflow: 'visible'
             }}
@@ -695,6 +698,19 @@ export default function AnnotationLayer({
                     if (e.key === 'Escape') {
                       cancelTextEdit()
                     }
+                    // Text formatting shortcuts
+                    if (e.ctrlKey || e.metaKey) {
+                      if (e.key === 'b') {
+                        e.preventDefault()
+                        onUpdateAnnotation(annotation.id, { bold: !annotation.bold })
+                      } else if (e.key === 'i') {
+                        e.preventDefault()
+                        onUpdateAnnotation(annotation.id, { italic: !annotation.italic })
+                      } else if (e.key === 'u') {
+                        e.preventDefault()
+                        onUpdateAnnotation(annotation.id, { underline: !annotation.underline })
+                      }
+                    }
                   }}
                   autoFocus
                   rows={1}
@@ -702,7 +718,10 @@ export default function AnnotationLayer({
                     fontFamily: annotation.font,
                     fontSize: annotation.fontSize * zoom,
                     color: annotation.color,
-                    width: effectiveWidth
+                    width: effectiveWidth,
+                    fontWeight: annotation.bold ? 'bold' : 'normal',
+                    fontStyle: annotation.italic ? 'italic' : 'normal',
+                    textDecoration: annotation.underline ? 'underline' : 'none'
                   }}
                 />
                 <div

@@ -18,10 +18,10 @@ export type BoxThickness = 'thin' | 'medium' | 'thick'
 export type TextFont =
   | 'Arial'
   | 'Times New Roman'
-  | 'Helvetica'
+  | 'Verdana'
   | 'Georgia'
-  | 'Calibri'
-  | 'Garamond'
+  | 'Trebuchet MS'
+  | 'Palatino'
   | 'Courier New'
 
 // Base annotation properties
@@ -67,6 +67,9 @@ export interface TextAnnotation extends BaseAnnotation {
   font: TextFont
   fontSize: number // in points
   color: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
 }
 
 // Union of all annotation types
@@ -127,9 +130,9 @@ export const LINE_COLOR_OPTIONS: LineColor[] = ['black', 'red', 'blue']  // 'cle
 export const AVAILABLE_FONTS: TextFont[] = [
   'Arial',
   'Times New Roman',
-  'Helvetica',
+  'Verdana',
   'Georgia',
-  'Calibri',
-  'Garamond',
+  'Trebuchet MS',
+  'Palatino',
   'Courier New'
 ]

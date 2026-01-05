@@ -37,7 +37,7 @@ A desktop application for viewing PDFs, reordering pages, merging multiple docum
 | **Underline** | Horizontal line under text. Colors: black, red, blue. Clear option to erase. |
 | **Strikethrough** | Horizontal line through text. Colors: black, red, blue. Clear option to erase. |
 | **Box** | Rectangle with customizable border color, fill color, and thickness (thin/medium/thick) |
-| **Text** | Placed text with font selection, size, and color |
+| **Text** | Placed text with font selection, size, color, and formatting (bold, italic, underline) |
 | **Eraser** | Select text to erase all text annotations (highlights, underlines, strikethroughs) |
 
 **Text-based annotations** (highlight, underline, strikethrough):
@@ -54,13 +54,18 @@ A desktop application for viewing PDFs, reordering pages, merging multiple docum
 - Hold Shift while resizing to maintain aspect ratio
 - Box resize handle is visible when selected or when the box tool is active
 
+**Text formatting** (while editing a text annotation):
+- Ctrl+B to toggle bold
+- Ctrl+I to toggle italic
+- Ctrl+U to toggle underline
+
 ### Text Fonts (7 formal options)
 1. Arial - sans-serif, clean
 2. Times New Roman - serif, traditional
-3. Helvetica - sans-serif, professional
+3. Verdana - sans-serif, readable
 4. Georgia - serif, readable
-5. Calibri - sans-serif, modern
-6. Garamond - serif, elegant
+5. Trebuchet MS - sans-serif, modern
+6. Palatino - serif, elegant
 7. Courier New - monospace, for forms/code
 
 ## Layout
@@ -189,6 +194,9 @@ Note: Annotations are not yet baked into the saved PDF (planned feature).
 | Ctrl+0 | Reset zoom to 100% |
 | Ctrl+Mouse Wheel | Zoom in/out |
 | Shift+Drag resize handle | Maintain aspect ratio while resizing |
+| Ctrl+B | Toggle bold (while editing text) |
+| Ctrl+I | Toggle italic (while editing text) |
+| Ctrl+U | Toggle underline (while editing text) |
 
 ## Undo/Redo
 

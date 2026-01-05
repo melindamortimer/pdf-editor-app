@@ -556,11 +556,13 @@ export default function App() {
   // Can use Save (not Save As) only with single document
   const canSave = documents.length === 1 && currentFilePath !== null
 
-  // Get the selected annotation to determine its type (for showing box color pickers)
+  // Get the selected annotation to determine its type (for showing tool options)
   const selectedAnnotation = selectedAnnotationId
     ? annotations.find(a => a.id === selectedAnnotationId)
     : null
-  const selectedAnnotationType = selectedAnnotation?.type === 'box' ? 'box' : null
+  const selectedAnnotationType: 'box' | 'text' | null =
+    selectedAnnotation?.type === 'box' ? 'box' :
+    selectedAnnotation?.type === 'text' ? 'text' : null
 
   // Handler for box color changes - updates selected box if one is selected
   const handleBoxColorChange = useCallback((color: string) => {
@@ -577,6 +579,28 @@ export default function App() {
     }
   }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
 
+  // Handler for text font changes - updates selected text if one is selected
+  const handleTextFontChange = useCallback((font: typeof toolSettings.textFont) => {
+    updateToolSettings({ textFont: font })
+    if (selectedAnnotation?.type === 'text') {
+      wrappedUpdateAnnotation(selectedAnnotation.id, { font })
+    }
+  }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
+
+  const handleTextSizeChange = useCallback((fontSize: number) => {
+    updateToolSettings({ textSize: fontSize })
+    if (selectedAnnotation?.type === 'text') {
+      wrappedUpdateAnnotation(selectedAnnotation.id, { fontSize })
+    }
+  }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
+
+  const handleTextColorChange = useCallback((color: string) => {
+    updateToolSettings({ textColor: color })
+    if (selectedAnnotation?.type === 'text') {
+      wrappedUpdateAnnotation(selectedAnnotation.id, { color })
+    }
+  }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
+
   return (
     <div className="app">
       <Toolbar
@@ -589,6 +613,9 @@ export default function App() {
         lineColor={toolSettings.lineColor}
         boxColor={toolSettings.boxColor}
         boxFillColor={toolSettings.boxFillColor}
+        textFont={toolSettings.textFont}
+        textSize={toolSettings.textSize}
+        textColor={toolSettings.textColor}
         selectedAnnotationType={selectedAnnotationType}
         canUndo={combinedCanUndo}
         canRedo={combinedCanRedo}
@@ -602,6 +629,9 @@ export default function App() {
         onLineColorChange={(color) => updateToolSettings({ lineColor: color })}
         onBoxColorChange={handleBoxColorChange}
         onBoxFillColorChange={handleBoxFillColorChange}
+        onTextFontChange={handleTextFontChange}
+        onTextSizeChange={handleTextSizeChange}
+        onTextColorChange={handleTextColorChange}
         onUndo={unifiedUndo}
         onRedo={unifiedRedo}
         onDiscardAnnotations={discardAllAnnotations}
