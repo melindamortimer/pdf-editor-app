@@ -172,7 +172,7 @@ export default function MainViewer({
               onAddAnnotation={onAddAnnotation}
               onUpdateAnnotation={onUpdateAnnotation}
               onSelectAnnotation={onSelectAnnotation}
-              debug={false}
+              debug={true}
             />
           )}
           {hasContent && pageId && canvasDimensions.width > 0 && (

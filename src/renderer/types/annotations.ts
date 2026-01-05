@@ -8,7 +8,7 @@ export type AnnotationTool =
   | 'text'
 
 // Colors for highlight tool
-export type HighlightColor = 'yellow' | 'green' | 'pink' | 'blue'
+export type HighlightColor = 'yellow' | 'green' | 'pink' | 'orange'
 
 // Box thickness options
 export type BoxThickness = 'thin' | 'medium' | 'thick'
@@ -81,7 +81,7 @@ export const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
   yellow: 'rgb(255, 235, 59)',
   green: 'rgb(76, 175, 80)',
   pink: 'rgb(233, 30, 99)',
-  blue: 'rgb(33, 150, 243)'
+  orange: 'rgb(255, 152, 0)'
 }
 
 // Semi-transparent colors for actual highlight annotations on PDF
@@ -89,7 +89,7 @@ export const HIGHLIGHT_COLORS_TRANSPARENT: Record<HighlightColor, string> = {
   yellow: 'rgba(255, 235, 59, 0.4)',
   green: 'rgba(76, 175, 80, 0.4)',
   pink: 'rgba(233, 30, 99, 0.35)',
-  blue: 'rgba(33, 150, 243, 0.4)'
+  orange: 'rgba(255, 152, 0, 0.4)'
 }
 
 // Box thickness in pixels (will be scaled by zoom)

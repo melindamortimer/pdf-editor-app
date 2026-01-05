@@ -59,9 +59,16 @@ export function groupTextIntoLines(boxes: TextBox[]): TextLine[] {
       if (gap > 0) gaps.push(gap)
     }
 
-    // Column gap threshold: use 3x average word width as baseline
-    // This handles cases where there's only one large gap
-    const columnGapThreshold = avgWordWidth * 3
+    // Column gap threshold: 3x median for 3+ gaps, otherwise use avgWordWidth
+    // Using 3x to handle justified text which has larger word spacing
+    let columnGapThreshold: number
+    if (gaps.length >= 3) {
+      const sortedGaps = [...gaps].sort((a, b) => a - b)
+      const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)]
+      columnGapThreshold = medianGap * 3
+    } else {
+      columnGapThreshold = avgWordWidth
+    }
 
     // Split into lines based on column gaps
     let currentLineBoxes: TextBox[] = [bandBoxes[0]]
@@ -122,6 +129,7 @@ export interface SelectedLineWords {
 /**
  * Get selected words from a text selection, handling multi-line and reversed selections.
  * Returns one entry per line with the selected words on that line.
+ * Only includes lines that horizontally overlap with the selection region.
  */
 export function getSelectedWords(
   lines: TextLine[],
@@ -136,11 +144,24 @@ export function getSelectedWords(
     ;[startWord, endWord] = [endWord, startWord]
   }
 
+  // Determine horizontal bounds of the selection from start and end positions
+  const startBox = lines[startLine]?.boxes[startWord]
+  const endBox = lines[endLine]?.boxes[endWord]
+  if (!startBox || !endBox) return []
+
+  // Selection X range: from leftmost to rightmost selected position
+  const selectionMinX = Math.min(startBox.x, endBox.x)
+  const selectionMaxX = Math.max(startBox.x + startBox.width, endBox.x + endBox.width)
+
   const result: SelectedLineWords[] = []
 
   for (let lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
     const line = lines[lineIdx]
     if (!line) continue
+
+    // Skip lines that don't horizontally overlap with selection region
+    const lineOverlaps = line.maxX >= selectionMinX && line.minX <= selectionMaxX
+    if (!lineOverlaps) continue
 
     let fromWord: number
     let toWord: number

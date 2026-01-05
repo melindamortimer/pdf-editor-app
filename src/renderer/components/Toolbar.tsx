@@ -26,7 +26,7 @@ const HIGHLIGHT_COLOR_OPTIONS: { id: HighlightColor; label: string }[] = [
   { id: 'yellow', label: 'Yellow' },
   { id: 'green', label: 'Green' },
   { id: 'pink', label: 'Pink' },
-  { id: 'blue', label: 'Blue' }
+  { id: 'orange', label: 'Orange' }
 ]
 
 const LINE_COLOR_LABELS: Record<LineColor, string> = {

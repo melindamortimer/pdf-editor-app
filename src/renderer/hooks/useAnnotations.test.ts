@@ -246,7 +246,7 @@ describe('useAnnotations', () => {
         })
         result.current.addAnnotation({
           id: 'ann-3', pageId: 'page-1', type: 'highlight',
-          x: 0.3, y: 0.4, width: 0.3, height: 0.05, color: 'blue'
+          x: 0.3, y: 0.4, width: 0.3, height: 0.05, color: 'orange'
         })
       })
 

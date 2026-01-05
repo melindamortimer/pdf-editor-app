@@ -144,7 +144,7 @@ describe('Annotation Constants', () => {
       expect(HIGHLIGHT_COLORS.yellow).toBeDefined()
       expect(HIGHLIGHT_COLORS.green).toBeDefined()
       expect(HIGHLIGHT_COLORS.pink).toBeDefined()
-      expect(HIGHLIGHT_COLORS.blue).toBeDefined()
+      expect(HIGHLIGHT_COLORS.orange).toBeDefined()
     })
 
     it('colors are vibrant (no alpha) for picker display', () => {
@@ -158,7 +158,7 @@ describe('Annotation Constants', () => {
       expect(HIGHLIGHT_COLORS_TRANSPARENT.yellow).toBeDefined()
       expect(HIGHLIGHT_COLORS_TRANSPARENT.green).toBeDefined()
       expect(HIGHLIGHT_COLORS_TRANSPARENT.pink).toBeDefined()
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.blue).toBeDefined()
+      expect(HIGHLIGHT_COLORS_TRANSPARENT.orange).toBeDefined()
     })
 
     it('colors have alpha for transparency on PDF', () => {

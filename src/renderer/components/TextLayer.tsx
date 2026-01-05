@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { getTextContent } from '../services/pdfRenderer'
 import {
   groupTextIntoLines,
@@ -51,6 +51,8 @@ export default function TextLayer({
   const [lines, setLines] = useState<TextLine[]>([])
   const [selection, setSelection] = useState<TextSelection | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const mouseStart = useRef<{ x: number; y: number } | null>(null)
+  const mouseMoved = useRef(false)
 
   // Is this a text-selection tool?
   const isTextTool = currentTool === 'highlight' || currentTool === 'underline' || currentTool === 'strikethrough'
@@ -66,6 +68,13 @@ export default function TextLayer({
 
         const boxes: TextBox[] = []
 
+        // Create a canvas for text measurement
+        const measureCanvas = document.createElement('canvas')
+        const measureCtx = measureCanvas.getContext('2d')!
+
+        // Get font styles from PDF.js
+        const styles = textContent.styles || {}
+
         for (const item of textContent.items) {
           if (!('str' in item) || !item.str.trim()) continue
 
@@ -74,14 +83,50 @@ export default function TextLayer({
           const y = viewport.height - transform[5]
           const itemWidth = item.width
           const itemHeight = Math.abs(transform[3])
+          const baseY = y - itemHeight
+          const str = item.str
 
-          boxes.push({
-            x,
-            y: y - itemHeight,
-            width: itemWidth,
-            height: itemHeight,
-            text: item.str
-          })
+          // Get font from PDF.js styles
+          const fontName = item.fontName
+          const style = styles[fontName] || {}
+          const fontFamily = style.fontFamily || 'sans-serif'
+
+          // Build font string with weight/style if available
+          const isItalic = fontName?.toLowerCase().includes('italic') ||
+                          fontName?.toLowerCase().includes('oblique')
+          const isBold = fontName?.toLowerCase().includes('bold')
+
+          const fontStyle = isItalic ? 'italic ' : ''
+          const fontWeight = isBold ? 'bold ' : ''
+          const fontSize = itemHeight
+
+          measureCtx.font = `${fontStyle}${fontWeight}${fontSize}px ${fontFamily}, serif, sans-serif`
+
+          // Measure the full string to get scale factor
+          const measuredFullWidth = measureCtx.measureText(str).width
+          const scaleFactor = measuredFullWidth > 0 ? itemWidth / measuredFullWidth : 1
+
+          // Find word boundaries using regex
+          const wordRegex = /\S+/g
+          let match
+          while ((match = wordRegex.exec(str)) !== null) {
+            const word = match[0]
+            const startIndex = match.index
+            const endIndex = startIndex + word.length
+
+            // Measure from string start to word start (avoids error accumulation)
+            const prefixWidth = measureCtx.measureText(str.substring(0, startIndex)).width * scaleFactor
+            const toEndWidth = measureCtx.measureText(str.substring(0, endIndex)).width * scaleFactor
+            const wordWidth = toEndWidth - prefixWidth
+
+            boxes.push({
+              x: x + prefixWidth,
+              y: baseY,
+              width: wordWidth,
+              height: itemHeight,
+              text: word
+            })
+          }
         }
 
         setTextBoxes(boxes)
@@ -115,6 +160,9 @@ export default function TextLayer({
     e.preventDefault()
     e.stopPropagation()
 
+    mouseStart.current = { x, y }
+    mouseMoved.current = false
+
     setSelection({
       startLine: hit.lineIndex,
       startWord: hit.wordIndex,
@@ -130,6 +178,15 @@ export default function TextLayer({
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
+
+    // Track if mouse actually moved (threshold of 3px to ignore tiny movements)
+    if (mouseStart.current) {
+      const dx = Math.abs(x - mouseStart.current.x)
+      const dy = Math.abs(y - mouseStart.current.y)
+      if (dx > 3 || dy > 3) {
+        mouseMoved.current = true
+      }
+    }
 
     const hit = findWordAtPoint(lines, x, y)
     if (hit) {
@@ -152,9 +209,8 @@ export default function TextLayer({
     const tool = currentTool as 'highlight' | 'underline' | 'strikethrough'
     const color = currentTool === 'highlight' ? highlightColor : lineColor
 
-    // Check if this is a click (same start and end position)
-    const isClick = selection.startLine === selection.endLine &&
-                    selection.startWord === selection.endWord
+    // Check if this is a click (mouse didn't move)
+    const isClick = !mouseMoved.current
 
     if (isClick) {
       // Check if clicking on existing annotation of same type
