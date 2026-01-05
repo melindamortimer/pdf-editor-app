@@ -518,19 +518,43 @@ export default function AnnotationLayer({
           />
         )
 
-      case 'underline':
-      case 'strikethrough':
+      case 'underline': {
+        // Line thickness proportional to text height (about 8%, min 1px)
+        const textHeight = annotation.height * canvasHeight
+        const lineThickness = Math.max(1, Math.round(textHeight * 0.08))
         return (
           <div
             key={annotation.id}
             className={`annotation line ${isSelected ? 'selected' : ''}`}
             style={{
               ...baseStyle,
-              height: 2,
+              // Position at bottom of text bounds
+              top: pos.y + textHeight,
+              height: lineThickness,
               backgroundColor: annotation.color
             }}
           />
         )
+      }
+
+      case 'strikethrough': {
+        // Line thickness proportional to text height (about 8%, min 1px)
+        const textHeight = annotation.height * canvasHeight
+        const lineThickness = Math.max(1, Math.round(textHeight * 0.08))
+        return (
+          <div
+            key={annotation.id}
+            className={`annotation line ${isSelected ? 'selected' : ''}`}
+            style={{
+              ...baseStyle,
+              // Position at ~65% down to account for descenders (p, g, y, etc.)
+              top: pos.y + textHeight * 0.65 - lineThickness / 2,
+              height: lineThickness,
+              backgroundColor: annotation.color
+            }}
+          />
+        )
+      }
 
       case 'box':
         return (

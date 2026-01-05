@@ -309,30 +309,34 @@ export default function TextLayer({
       ))}
 
       {/* Selection preview */}
-      {previewBoxes.map((lineSelection, i) => (
-        <div
-          key={`preview-${i}`}
-          className={`selection-preview ${currentTool}`}
-          style={{
-            left: lineSelection.minX,
-            top: lineSelection.y,
-            width: lineSelection.maxX - lineSelection.minX,
-            height: lineSelection.height,
-            backgroundColor: currentTool === 'highlight'
-              ? HIGHLIGHT_COLORS_TRANSPARENT[highlightColor]
-              : undefined,
-            borderBottom: currentTool === 'underline'
-              ? `2px solid ${lineColor}`
-              : undefined,
-            ...(currentTool === 'strikethrough' ? {
-              backgroundImage: `linear-gradient(${lineColor}, ${lineColor})`,
-              backgroundSize: '100% 2px',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat'
-            } : {})
-          }}
-        />
-      ))}
+      {previewBoxes.map((lineSelection, i) => {
+        // Line thickness proportional to text height (about 8%, min 1px)
+        const lineThickness = Math.max(1, Math.round(lineSelection.height * 0.08))
+        return (
+          <div
+            key={`preview-${i}`}
+            className={`selection-preview ${currentTool}`}
+            style={{
+              left: lineSelection.minX,
+              top: currentTool === 'underline'
+                ? lineSelection.y + lineSelection.height
+                : currentTool === 'strikethrough'
+                  // Position at ~65% down to account for descenders (p, g, y, etc.)
+                  ? lineSelection.y + lineSelection.height * 0.65 - lineThickness / 2
+                  : lineSelection.y,
+              width: lineSelection.maxX - lineSelection.minX,
+              height: currentTool === 'underline' || currentTool === 'strikethrough'
+                ? lineThickness
+                : lineSelection.height,
+              backgroundColor: currentTool === 'highlight'
+                ? HIGHLIGHT_COLORS_TRANSPARENT[highlightColor]
+                : currentTool === 'underline' || currentTool === 'strikethrough'
+                  ? lineColor
+                  : undefined
+            }}
+          />
+        )
+      })}
     </div>
   )
 }
