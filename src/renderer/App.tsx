@@ -266,17 +266,55 @@ export default function App() {
     if (pages.length === 0) return
 
     try {
-      const success = await saveAsNewFile(pages)
-      if (success) {
+      const savedPath = await saveAsNewFile(pages, annotations)
+      if (savedPath) {
+        // Clear all state
+        clearAllPdfCache()
+        setDocuments([])
+        setPages([])
+        discardAllAnnotations()
+        setHistoryStack([])
+        setFutureStack([])
+        setSelectedPageIndex(0)
+        setSelectedPageIndices(new Set([0]))
+        setCopiedPages([])
+        setShowSaveWarning(false)
+
+        // Reopen the saved file fresh
+        const data = await window.electronAPI.readFile(savedPath)
+        const id = crypto.randomUUID()
+        const name = savedPath.split('/').pop() || savedPath.split('\\').pop() || 'document.pdf'
+
+        const viewerBuffer = new Uint8Array(data).buffer
+        const manipulatorBuffer = new Uint8Array(data).buffer
+
+        const pdf = await loadPdfDocument(viewerBuffer, id)
+        const pageCount = pdf.numPages
+
+        await loadPdfForManipulation(id, manipulatorBuffer)
+
+        const newDoc: PdfDocument = { id, name, path: savedPath, pageCount }
+        const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
+          id: crypto.randomUUID(),
+          documentId: id,
+          pageIndex: i,
+          originalPageIndex: i
+        }))
+
+        setDocuments([newDoc])
+        setPages(newPages)
+        initialPagesRef.current = serializePageState(newPages)
+        setCurrentFilePath(savedPath)
         setHasUnsavedChanges(false)
-        // Update initial state to current
-        initialPagesRef.current = serializePageState(pages)
+
+        // Blur any focused button so space key works for panning
+        ;(document.activeElement as HTMLElement)?.blur?.()
       }
     } catch (error) {
       console.error('Save As failed:', error)
       alert('Failed to save file. Please try again.')
     }
-  }, [pages])
+  }, [pages, annotations, discardAllAnnotations])
 
   // Save - overwrites current file (with warning on first save)
   const handleSave = useCallback(async () => {
@@ -291,7 +329,7 @@ export default function App() {
     // Show warning on first save
     if (!showSaveWarning) {
       const confirmed = window.confirm(
-        'This will overwrite the original file. Continue?\n\n' +
+        'This will overwrite the original file and bake all annotations permanently. Continue?\n\n' +
         '(Use "Save As" to save to a new location)'
       )
       if (!confirmed) return
@@ -299,16 +337,55 @@ export default function App() {
     }
 
     try {
-      const success = await saveToFile(currentFilePath, pages)
+      const success = await saveToFile(currentFilePath, pages, annotations)
       if (success) {
+        // Clear all state
+        clearAllPdfCache()
+        setDocuments([])
+        setPages([])
+        discardAllAnnotations()
+        setHistoryStack([])
+        setFutureStack([])
+        setSelectedPageIndex(0)
+        setSelectedPageIndices(new Set([0]))
+        setCopiedPages([])
+
+        // Reopen the saved file fresh
+        const data = await window.electronAPI.readFile(currentFilePath)
+        const id = crypto.randomUUID()
+        const name = currentFilePath.split('/').pop() || currentFilePath.split('\\').pop() || 'document.pdf'
+
+        const viewerBuffer = new Uint8Array(data).buffer
+        const manipulatorBuffer = new Uint8Array(data).buffer
+
+        const pdf = await loadPdfDocument(viewerBuffer, id)
+        const pageCount = pdf.numPages
+
+        await loadPdfForManipulation(id, manipulatorBuffer)
+
+        const newDoc: PdfDocument = { id, name, path: currentFilePath, pageCount }
+        const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
+          id: crypto.randomUUID(),
+          documentId: id,
+          pageIndex: i,
+          originalPageIndex: i
+        }))
+
+        setDocuments([newDoc])
+        setPages(newPages)
+        initialPagesRef.current = serializePageState(newPages)
+        setCurrentFilePath(currentFilePath)
         setHasUnsavedChanges(false)
-        initialPagesRef.current = serializePageState(pages)
+        setShowSaveWarning(true) // Keep the warning state for this file
+
+        // Blur any focused button so space key works for panning
+        ;(document.activeElement as HTMLElement)?.blur?.()
       }
     } catch (error) {
       console.error('Save failed:', error)
       alert('Failed to save file. Please try again.')
     }
-  }, [pages, documents.length, currentFilePath, showSaveWarning, handleSaveAs])
+  }, [pages, documents.length, currentFilePath, showSaveWarning, annotations, discardAllAnnotations, handleSaveAs])
 
   // Page undo - restores previous page state from history stack
   const pageUndo = useCallback((entry: HistoryEntry & { type: 'pages' }) => {
