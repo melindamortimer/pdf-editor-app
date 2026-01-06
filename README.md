@@ -166,9 +166,9 @@ A desktop application for viewing PDFs, reordering pages, merging multiple docum
 ### Save Process
 1. Uses pdf-lib to create new PDF document
 2. Copies pages in current order (respecting deletions/duplications/reordering)
-3. Writes to file
-
-Note: Annotations are not yet baked into the saved PDF (planned feature).
+3. Bakes all annotations permanently into the PDF (highlights, underlines, strikethroughs, boxes, text)
+4. Reloads the saved file fresh (annotations become part of the PDF content)
+5. Writes to file
 
 ## Keyboard Shortcuts
 
@@ -280,9 +280,7 @@ src/
 - [x] Partial erasing and toggle-off (shrink/split merged annotations)
 - [x] Multi-page selection (Shift+click, Shift+arrow keys)
 - [x] Copy/paste pages (Ctrl+C, Ctrl+V)
-
-### Planned
-- [ ] Bake annotations into PDF on save
+- [x] Bake annotations into PDF on save (with font embedding and fallback to standard PDF fonts)
 
 ## Development
 

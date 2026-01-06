@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, PDFPage as PdfLibPage } from 'pdf-lib'
 import type { PdfPage } from '../types/pdf'
 import type { Annotation, TextAnnotation, BoxAnnotation, HighlightAnnotation, UnderlineAnnotation, StrikethroughAnnotation } from '../types/annotations'
-import { HIGHLIGHT_COLORS, DEFAULT_BOX_BORDER_PX } from '../types/annotations'
+import { HIGHLIGHT_COLORS, BOX_THICKNESS_PX } from '../types/annotations'
 import { getEmbeddedFont, clearFontCache } from './fontLoader'
 
 // Cache of loaded PDF documents for manipulation
@@ -174,8 +174,8 @@ function renderBox(
   x: number, y: number, width: number, height: number
 ): void {
   const { r: borderR, g: borderG, b: borderB } = parseColor(annotation.color)
-  // PDF borders are centered on edge, so use smaller value than CSS pixels
-  const thickness = DEFAULT_BOX_BORDER_PX * 0.25
+  // PDF borders are centered on edge, so scale down from CSS pixels
+  const thickness = BOX_THICKNESS_PX[annotation.thickness] * 1.0
 
   // Draw fill if not transparent
   if (annotation.fillColor !== 'transparent') {

@@ -719,6 +719,13 @@ export default function App() {
     }
   }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
 
+  const handleBoxThicknessChange = useCallback((thickness: typeof toolSettings.boxThickness) => {
+    updateToolSettings({ boxThickness: thickness })
+    if (selectedAnnotation?.type === 'box') {
+      wrappedUpdateAnnotation(selectedAnnotation.id, { thickness })
+    }
+  }, [selectedAnnotation, updateToolSettings, wrappedUpdateAnnotation])
+
   // Handler for text font changes - updates selected text if one is selected
   const handleTextFontChange = useCallback((font: typeof toolSettings.textFont) => {
     updateToolSettings({ textFont: font })
@@ -753,6 +760,7 @@ export default function App() {
         lineColor={toolSettings.lineColor}
         boxColor={toolSettings.boxColor}
         boxFillColor={toolSettings.boxFillColor}
+        boxThickness={toolSettings.boxThickness}
         textFont={toolSettings.textFont}
         textSize={toolSettings.textSize}
         textColor={toolSettings.textColor}
@@ -769,6 +777,7 @@ export default function App() {
         onLineColorChange={(color) => updateToolSettings({ lineColor: color })}
         onBoxColorChange={handleBoxColorChange}
         onBoxFillColorChange={handleBoxFillColorChange}
+        onBoxThicknessChange={handleBoxThicknessChange}
         onTextFontChange={handleTextFontChange}
         onTextSizeChange={handleTextSizeChange}
         onTextColorChange={handleTextColorChange}

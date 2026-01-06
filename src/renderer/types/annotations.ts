@@ -107,9 +107,6 @@ export const BOX_THICKNESS_PX: Record<BoxThickness, number> = {
   thick: 4
 }
 
-// Default box border thickness in pixels (used for both display and baking)
-export const DEFAULT_BOX_BORDER_PX = 2
-
 // Default colors
 export const DEFAULT_LINE_COLOR = '#000000' // Black for underline/strikethrough
 export const DEFAULT_BOX_COLOR = '#ff0000' // Red for box outline

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import type { AnnotationTool, HighlightColor, LineColor, TextFont } from '../types/annotations'
+import type { AnnotationTool, HighlightColor, LineColor, TextFont, BoxThickness } from '../types/annotations'
 import { HIGHLIGHT_COLORS, LINE_COLORS, LINE_COLOR_OPTIONS, AVAILABLE_FONTS } from '../types/annotations'
 import './Toolbar.css'
 
@@ -40,6 +40,12 @@ const LINE_COLOR_LABELS: Record<LineColor, string> = {
   clear: 'Eraser'
 }
 
+const BOX_THICKNESS_OPTIONS: { id: BoxThickness; label: string }[] = [
+  { id: 'thin', label: 'Thin' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'thick', label: 'Thick' }
+]
+
 interface ToolbarProps {
   hasDocuments: boolean
   hasUnsavedChanges: boolean
@@ -50,6 +56,7 @@ interface ToolbarProps {
   lineColor: string
   boxColor: string
   boxFillColor: string
+  boxThickness: BoxThickness
   textFont: TextFont
   textSize: number
   textColor: string
@@ -66,6 +73,7 @@ interface ToolbarProps {
   onLineColorChange: (color: string) => void
   onBoxColorChange: (color: string) => void
   onBoxFillColorChange: (color: string) => void
+  onBoxThicknessChange: (thickness: BoxThickness) => void
   onTextFontChange: (font: TextFont) => void
   onTextSizeChange: (size: number) => void
   onTextColorChange: (color: string) => void
@@ -84,6 +92,7 @@ export default function Toolbar({
   lineColor,
   boxColor,
   boxFillColor,
+  boxThickness,
   textFont,
   textSize,
   textColor,
@@ -100,6 +109,7 @@ export default function Toolbar({
   onLineColorChange,
   onBoxColorChange,
   onBoxFillColorChange,
+  onBoxThicknessChange,
   onTextFontChange,
   onTextSizeChange,
   onTextColorChange,
@@ -112,6 +122,7 @@ export default function Toolbar({
   const [showLineColorDropdown, setShowLineColorDropdown] = useState(false)
   const [showBoxColorDropdown, setShowBoxColorDropdown] = useState(false)
   const [showBoxFillColorDropdown, setShowBoxFillColorDropdown] = useState(false)
+  const [showBoxThicknessDropdown, setShowBoxThicknessDropdown] = useState(false)
   const [showFontDropdown, setShowFontDropdown] = useState(false)
   const [showSizeDropdown, setShowSizeDropdown] = useState(false)
   const [showTextColorDropdown, setShowTextColorDropdown] = useState(false)
@@ -120,6 +131,7 @@ export default function Toolbar({
   const lineColorDropdownRef = useRef<HTMLDivElement>(null)
   const boxColorDropdownRef = useRef<HTMLDivElement>(null)
   const boxFillColorDropdownRef = useRef<HTMLDivElement>(null)
+  const boxThicknessDropdownRef = useRef<HTMLDivElement>(null)
   const fontDropdownRef = useRef<HTMLDivElement>(null)
   const sizeDropdownRef = useRef<HTMLDivElement>(null)
   const textColorDropdownRef = useRef<HTMLDivElement>(null)
@@ -141,6 +153,9 @@ export default function Toolbar({
       }
       if (boxFillColorDropdownRef.current && !boxFillColorDropdownRef.current.contains(e.target as Node)) {
         setShowBoxFillColorDropdown(false)
+      }
+      if (boxThicknessDropdownRef.current && !boxThicknessDropdownRef.current.contains(e.target as Node)) {
+        setShowBoxThicknessDropdown(false)
       }
       if (fontDropdownRef.current && !fontDropdownRef.current.contains(e.target as Node)) {
         setShowFontDropdown(false)
@@ -362,6 +377,35 @@ export default function Toolbar({
                       style={{ backgroundColor: LINE_COLORS[colorId] }}
                       title={LINE_COLOR_LABELS[colorId]}
                     />
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Box thickness dropdown */}
+            <div className="color-dropdown-container" ref={boxThicknessDropdownRef}>
+              <button
+                className="thickness-picker-button"
+                onClick={() => setShowBoxThicknessDropdown(!showBoxThicknessDropdown)}
+                title="Border thickness"
+              >
+                <span className="thickness-icon" data-thickness={boxThickness}>━</span>
+                <span className="dropdown-arrow">▼</span>
+              </button>
+              {showBoxThicknessDropdown && (
+                <div className="thickness-dropdown">
+                  {BOX_THICKNESS_OPTIONS.map(({ id, label }) => (
+                    <button
+                      key={id}
+                      className={`thickness-option ${boxThickness === id ? 'active' : ''}`}
+                      onClick={() => {
+                        onBoxThicknessChange(id)
+                        setShowBoxThicknessDropdown(false)
+                      }}
+                      title={label}
+                    >
+                      <span className="thickness-preview" data-thickness={id}>━</span>
+                      <span className="thickness-label">{label}</span>
+                    </button>
                   ))}
                 </div>
               )}

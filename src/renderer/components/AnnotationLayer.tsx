@@ -8,7 +8,7 @@ import type {
 } from '../types/annotations'
 import {
   HIGHLIGHT_COLORS_TRANSPARENT,
-  DEFAULT_BOX_BORDER_PX
+  BOX_THICKNESS_PX
 } from '../types/annotations'
 import './AnnotationLayer.css'
 
@@ -694,7 +694,7 @@ export default function AnnotationLayer({
             className={`annotation box ${isSelected ? 'selected' : ''}`}
             style={{
               ...baseStyle,
-              border: `${DEFAULT_BOX_BORDER_PX}px solid ${annotation.color}`,
+              border: `${BOX_THICKNESS_PX[annotation.thickness] * zoom}px solid ${annotation.color}`,
               backgroundColor: annotation.fillColor,
               // Allow pointer events on box when resize handle is visible
               pointerEvents: showResizeHandle ? 'auto' : baseStyle.pointerEvents
@@ -851,7 +851,7 @@ export default function AnnotationLayer({
             className="drawing-preview box"
             style={{
               ...previewStyle,
-              border: `${DEFAULT_BOX_BORDER_PX}px solid ${boxColor}`,
+              border: `${BOX_THICKNESS_PX[boxThickness] * zoom}px solid ${boxColor}`,
               backgroundColor: boxFillColor
             }}
           />
