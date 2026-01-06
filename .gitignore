@@ -9,6 +9,12 @@ build/
 
 # Electron-builder output
 release/
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.snap
 
 # Environment
 .env

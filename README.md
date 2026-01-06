@@ -1,6 +1,23 @@
-# PDF Viewer & Editor App
+# DocuMint PDF Editor
 
-A desktop application for viewing PDFs, reordering pages, merging multiple documents, and adding annotations.
+A fresh, effortless desktop application for viewing PDFs, reordering pages, merging multiple documents, and adding annotations.
+
+## Installation
+
+### macOS
+1. Download `DocuMint PDF Editor-x.x.x-arm64.dmg` (Apple Silicon) or `DocuMint PDF Editor-x.x.x-x64.dmg` (Intel)
+2. Open the DMG and drag the app to Applications
+3. On first launch, right-click the app and select "Open" to bypass Gatekeeper (unsigned app)
+
+### Windows
+1. Download `DocuMint PDF Editor-x.x.x-setup.exe`
+2. Run the installer and follow the prompts
+3. Choose installation directory (optional)
+
+### Linux
+1. Download `DocuMint PDF Editor-x.x.x.AppImage` or `.deb` package
+2. For AppImage: `chmod +x *.AppImage && ./*.AppImage`
+3. For Debian/Ubuntu: `sudo dpkg -i *.deb`
 
 ## Tech Stack
 
@@ -254,33 +271,6 @@ src/
 - Form filling
 - Digital signatures
 - Printing (use system PDF viewer)
-
-## Current Implementation Status
-
-### Completed
-- [x] Electron + React + TypeScript project setup
-- [x] PDF viewing with PDF.js
-- [x] Page thumbnails in sidebar
-- [x] Page selection and navigation
-- [x] Zoom controls (+/- buttons, dropdown presets 50%-300%)
-- [x] Drag-and-drop page reordering
-- [x] Right-click context menu (Delete, Duplicate)
-- [x] Click-and-drag panning in main viewer
-- [x] Multi-document support (open multiple PDFs)
-- [x] Keyboard shortcuts (Ctrl+O, Ctrl+S, Ctrl+Z/Y, Arrow keys, Delete, etc.)
-- [x] Save/Save As with pdf-lib (page reorder, delete, duplicate, merge)
-- [x] Unsaved changes indicator
-- [x] Overwrite warning on first Save
-- [x] Annotation tools (highlight, underline, strikethrough, box, text)
-- [x] Annotation selection, movement, and resize handles
-- [x] Annotation color pickers (highlight colors, line colors, box border/fill colors)
-- [x] Undo/Redo (unified for page and annotation operations)
-- [x] Text selection layer for highlight/underline/strikethrough (word-based selection)
-- [x] Annotation eraser (clear option in color pickers)
-- [x] Partial erasing and toggle-off (shrink/split merged annotations)
-- [x] Multi-page selection (Shift+click, Shift+arrow keys)
-- [x] Copy/paste pages (Ctrl+C, Ctrl+V)
-- [x] Bake annotations into PDF on save (with font embedding and fallback to standard PDF fonts)
 
 ## Development
 

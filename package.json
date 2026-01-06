@@ -1,16 +1,56 @@
 {
-  "name": "pdf-editor-app",
+  "name": "documint-pdf-editor",
   "version": "1.0.0",
-  "description": "A desktop application for viewing PDFs, reordering pages, merging multiple documents, and adding annotations.",
+  "description": "DocuMint PDF Editor - A desktop application for viewing PDFs, reordering pages, merging multiple documents, and adding annotations.",
   "main": "dist-electron/main/main.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-builder",
+    "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
+    "package:linux": "npm run build && electron-builder --linux",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
+  },
+  "build": {
+    "appId": "com.documint.pdfeditor",
+    "productName": "DocuMint PDF Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "resources/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "resources/icon.png",
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "icon": "resources/icon.png",
+      "category": "Office",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "repository": {
     "type": "git",
