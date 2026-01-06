@@ -217,12 +217,12 @@ describe('Toolbar', () => {
     it('renders all annotation tool buttons', () => {
       renderWithProviders(<Toolbar {...defaultProps} hasDocuments={true} />)
 
-      expect(screen.getByTitle('Select')).toBeInTheDocument()
-      expect(screen.getByTitle('Highlight')).toBeInTheDocument()
-      expect(screen.getByTitle('Underline')).toBeInTheDocument()
-      expect(screen.getByTitle('Strikethrough')).toBeInTheDocument()
-      expect(screen.getByTitle('Box')).toBeInTheDocument()
-      expect(screen.getByTitle('Text')).toBeInTheDocument()
+      expect(screen.getByTitle('Select (S)')).toBeInTheDocument()
+      expect(screen.getByTitle('Highlight (H)')).toBeInTheDocument()
+      expect(screen.getByTitle('Underline (U)')).toBeInTheDocument()
+      expect(screen.getByTitle('Strikethrough (K)')).toBeInTheDocument()
+      expect(screen.getByTitle('Box (B)')).toBeInTheDocument()
+      expect(screen.getByTitle('Text (T)')).toBeInTheDocument()
     })
 
     it('marks current tool as active', () => {
@@ -230,8 +230,8 @@ describe('Toolbar', () => {
         <Toolbar {...defaultProps} hasDocuments={true} currentTool="highlight" />
       )
 
-      expect(screen.getByTitle('Highlight')).toHaveClass('active')
-      expect(screen.getByTitle('Select')).not.toHaveClass('active')
+      expect(screen.getByTitle('Highlight (H)')).toHaveClass('active')
+      expect(screen.getByTitle('Select (S)')).not.toHaveClass('active')
     })
 
     it('calls onToolChange when tool clicked', async () => {
@@ -240,22 +240,22 @@ describe('Toolbar', () => {
         <Toolbar {...defaultProps} hasDocuments={true} onToolChange={onToolChange} />
       )
 
-      await user.click(screen.getByTitle('Highlight'))
+      await user.click(screen.getByTitle('Highlight (H)'))
       expect(onToolChange).toHaveBeenCalledWith('highlight')
     })
 
     it('disables annotation tools when no documents', () => {
       renderWithProviders(<Toolbar {...defaultProps} hasDocuments={false} />)
 
-      expect(screen.getByTitle('Highlight')).toBeDisabled()
-      expect(screen.getByTitle('Box')).toBeDisabled()
-      expect(screen.getByTitle('Text')).toBeDisabled()
+      expect(screen.getByTitle('Highlight (H)')).toBeDisabled()
+      expect(screen.getByTitle('Box (B)')).toBeDisabled()
+      expect(screen.getByTitle('Text (T)')).toBeDisabled()
     })
 
     it('keeps select tool enabled without documents', () => {
       renderWithProviders(<Toolbar {...defaultProps} hasDocuments={false} />)
 
-      expect(screen.getByTitle('Select')).not.toBeDisabled()
+      expect(screen.getByTitle('Select (S)')).not.toBeDisabled()
     })
 
     it('shows color picker when highlight tool is selected', () => {

@@ -42,6 +42,10 @@
   cursor: not-allowed;
 }
 
+.toolbar button:focus {
+  outline: none;
+}
+
 /* Zoom Section */
 .zoom-section {
   margin-left: auto;
@@ -139,11 +143,11 @@
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3);
 }
 
-.tool-button[title="Underline"] {
+.tool-button[title^="Underline"] {
   text-decoration: underline;
 }
 
-.tool-button[title="Strikethrough"] {
+.tool-button[title^="Strikethrough"] {
   text-decoration: line-through;
 }
 

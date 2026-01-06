@@ -554,11 +554,45 @@ export default function App() {
         selectAnnotation(null)
         return
       }
+
+      // Tool shortcuts (single keys, no modifiers)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        switch (e.key.toLowerCase()) {
+          case 's':
+            e.preventDefault()
+            setCurrentTool('select')
+            return
+          case 'h':
+            e.preventDefault()
+            setCurrentTool('highlight')
+            return
+          case 'u':
+            e.preventDefault()
+            setCurrentTool('underline')
+            return
+          case 'k':
+            e.preventDefault()
+            setCurrentTool('strikethrough')
+            return
+          case 'b':
+            e.preventDefault()
+            setCurrentTool('box')
+            return
+          case 't':
+            e.preventDefault()
+            setCurrentTool('text')
+            return
+          case 'e':
+            e.preventDefault()
+            setCurrentTool('eraser')
+            return
+        }
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationId, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation])
+  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationId, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation, setCurrentTool])
 
   // Ctrl+Mouse Wheel zoom
   useEffect(() => {

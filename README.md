@@ -184,6 +184,13 @@ Note: Annotations are not yet baked into the saved PDF (planned feature).
 | Ctrl+V | Paste copied page(s) |
 | Delete / Backspace | Delete selected page or annotation |
 | Escape | Deselect annotation |
+| S | Select tool |
+| H | Highlight tool |
+| U | Underline tool |
+| K | Strikethrough tool |
+| B | Box tool |
+| T | Text tool |
+| E | Eraser tool |
 | ↑/↓ | Navigate pages |
 | Shift+↑/↓ | Extend page selection |
 | Shift+Click | Select range of pages |

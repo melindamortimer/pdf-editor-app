@@ -15,14 +15,14 @@ const ZOOM_PRESETS = [
   { label: '300%', value: 3 }
 ]
 
-const ANNOTATION_TOOLS: { id: AnnotationTool; label: string; icon: string }[] = [
-  { id: 'select', label: 'Select', icon: '↖' },
-  { id: 'eraser', label: 'Eraser', icon: '⌫' },
-  { id: 'highlight', label: 'Highlight', icon: '▮' },
-  { id: 'underline', label: 'Underline', icon: 'U' },
-  { id: 'strikethrough', label: 'Strikethrough', icon: 'S' },
-  { id: 'box', label: 'Box', icon: '☐' },
-  { id: 'text', label: 'Text', icon: 'T' }
+const ANNOTATION_TOOLS: { id: AnnotationTool; label: string; icon: string; shortcut: string }[] = [
+  { id: 'select', label: 'Select', icon: '↖', shortcut: 'S' },
+  { id: 'eraser', label: 'Eraser', icon: '⌫', shortcut: 'E' },
+  { id: 'highlight', label: 'Highlight', icon: '▮', shortcut: 'H' },
+  { id: 'underline', label: 'Underline', icon: 'U', shortcut: 'U' },
+  { id: 'strikethrough', label: 'Strikethrough', icon: 'S', shortcut: 'K' },
+  { id: 'box', label: 'Box', icon: '☐', shortcut: 'B' },
+  { id: 'text', label: 'Text', icon: 'T', shortcut: 'T' }
 ]
 
 const HIGHLIGHT_COLOR_OPTIONS: { id: HighlightColor; label: string }[] = [
@@ -218,7 +218,7 @@ export default function Toolbar({
             className={`tool-button ${currentTool === tool.id ? 'active' : ''}`}
             onClick={() => onToolChange(tool.id)}
             disabled={!hasDocuments && tool.id !== 'select'}
-            title={tool.label}
+            title={`${tool.label} (${tool.shortcut})`}
           >
             {tool.icon}
           </button>
