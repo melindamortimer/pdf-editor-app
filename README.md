@@ -4,6 +4,8 @@ A fresh, effortless desktop application for viewing PDFs, reordering pages, merg
 
 ## Installation
 
+Download the latest release for your platform from the [Releases page](../../releases).
+
 ### macOS
 1. Download `DocuMint PDF Editor-x.x.x-arm64.dmg` (Apple Silicon) or `DocuMint PDF Editor-x.x.x-x64.dmg` (Intel)
 2. Open the DMG and drag the app to Applications
@@ -18,6 +20,29 @@ A fresh, effortless desktop application for viewing PDFs, reordering pages, merg
 1. Download `DocuMint PDF Editor-x.x.x.AppImage` or `.deb` package
 2. For AppImage: `chmod +x *.AppImage && ./*.AppImage`
 3. For Debian/Ubuntu: `sudo dpkg -i *.deb`
+
+### Building from Source
+
+If no pre-built release is available for your platform, you can build it yourself:
+
+```bash
+# Clone the repository
+git clone https://github.com/melindamortimer/pdf-editor-app.git
+cd pdf-editor-app
+
+# Install dependencies
+npm install
+
+# Build for your platform
+npm run package:mac    # macOS (.dmg)
+npm run package:win    # Windows (.exe)
+npm run package:linux  # Linux (.AppImage, .deb)
+
+# Or build for all platforms
+npm run package
+```
+
+Built installers will be in the `release/` folder.
 
 ## Tech Stack
 
