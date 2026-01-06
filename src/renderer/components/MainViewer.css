@@ -3,12 +3,26 @@
   overflow: auto;
   padding: 20px;
   background: #2d2d2d;
+  cursor: default;
+}
+
+.main-viewer.grab-mode {
   cursor: grab;
+  /* Prevent scroll while in grab mode */
+  overflow: hidden;
+}
+
+.main-viewer.grab-mode * {
+  cursor: grab !important;
 }
 
 .main-viewer.panning {
   cursor: grabbing;
   user-select: none;
+}
+
+.main-viewer.panning * {
+  cursor: grabbing !important;
 }
 
 .main-viewer.empty {

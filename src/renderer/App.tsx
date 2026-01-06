@@ -104,6 +104,9 @@ export default function App() {
       }
 
       setHasUnsavedChanges(false)
+
+      // Blur any focused button so space key works for panning
+      ;(document.activeElement as HTMLElement)?.blur?.()
     } catch (error) {
       console.error('Error opening PDF:', error)
     }

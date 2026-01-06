@@ -60,6 +60,8 @@ export default function MainViewer({
   // Panning state
   const [isPanning, setIsPanning] = useState(false)
   const panStart = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 })
+  // Track the tool to restore after grab mode
+  const toolBeforeGrab = useRef<AnnotationTool | null>(null)
 
   useEffect(() => {
     if (!documentId) {
@@ -102,13 +104,65 @@ export default function MainViewer({
     }
   }, [documentId, pageIndex, zoom])
 
-  // Only allow panning with select tool
-  const canPan = currentTool === 'select'
+  // Track space key for grab-to-pan mode - switches to grab tool temporarily
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        // Don't activate if typing in an input/textarea
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+        // Prevent default scroll behavior
+        e.preventDefault()
+        if (!e.repeat && currentTool !== 'grab') {
+          // Save current tool and switch to grab
+          toolBeforeGrab.current = currentTool
+          onToolChange('grab')
+        }
+      }
+    }
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        // Don't interfere if typing in an input/textarea
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+        e.preventDefault()
+        setIsPanning(false)
+        // Restore previous tool
+        if (toolBeforeGrab.current) {
+          onToolChange(toolBeforeGrab.current)
+          toolBeforeGrab.current = null
+        }
+      }
+    }
 
-  // Pan handlers - only work with select tool and when not on annotation layer
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keyup', handleKeyUp)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [currentTool, onToolChange])
+
+  // Allow panning with select tool, or when using grab tool
+  const canPan = currentTool === 'select'
+  const isGrabMode = currentTool === 'grab'
+
+  // Pan handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!containerRef.current || e.button !== 0 || !canPan) return
-    // Don't start panning if clicking on canvas wrapper (let annotation layer handle it)
+    if (!containerRef.current || e.button !== 0) return
+    // In grab mode (space held), allow panning anywhere
+    if (isGrabMode) {
+      e.preventDefault()
+      setIsPanning(true)
+      panStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: containerRef.current.scrollLeft,
+        scrollTop: containerRef.current.scrollTop
+      }
+      return
+    }
+    // Normal panning - only outside canvas wrapper
+    if (!canPan) return
     if ((e.target as HTMLElement).closest('.canvas-wrapper')) return
     setIsPanning(true)
     panStart.current = {
@@ -117,7 +171,7 @@ export default function MainViewer({
       scrollLeft: containerRef.current.scrollLeft,
       scrollTop: containerRef.current.scrollTop
     }
-  }, [canPan])
+  }, [canPan, isGrabMode])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isPanning || !containerRef.current) return
@@ -139,7 +193,7 @@ export default function MainViewer({
 
   return (
     <div
-      className={`main-viewer ${isEmpty ? 'empty' : ''} ${isPanning ? 'panning' : ''}`}
+      className={`main-viewer ${isEmpty ? 'empty' : ''} ${isGrabMode ? 'grab-mode' : ''} ${isPanning ? 'panning' : ''}`}
       ref={containerRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

@@ -195,6 +195,7 @@ Note: Annotations are not yet baked into the saved PDF (planned feature).
 | Ctrl+0 | Reset zoom to 100% |
 | Ctrl+Mouse Wheel | Zoom in/out |
 | Shift+Drag resize handle | Maintain aspect ratio while resizing |
+| Space+Drag | Pan around document (temporarily switches to grab tool) |
 | Ctrl+B | Toggle bold (while editing text) |
 | Ctrl+I | Toggle italic (while editing text) |
 | Ctrl+U | Toggle underline (while editing text) |
