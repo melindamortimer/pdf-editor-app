@@ -26,6 +26,7 @@ interface MainViewerProps {
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
   onDeleteAnnotation: (id: string) => void
   onSelectAnnotation: (id: string | null) => void
+  onToolChange: (tool: AnnotationTool) => void
 }
 
 export default function MainViewer({
@@ -47,7 +48,8 @@ export default function MainViewer({
   onAddAnnotation,
   onUpdateAnnotation,
   onDeleteAnnotation,
-  onSelectAnnotation
+  onSelectAnnotation,
+  onToolChange
 }: MainViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -196,6 +198,7 @@ export default function MainViewer({
               onUpdateAnnotation={onUpdateAnnotation}
               onDeleteAnnotation={onDeleteAnnotation}
               onSelectAnnotation={onSelectAnnotation}
+              onToolChange={onToolChange}
             />
           )}
         </div>

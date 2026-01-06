@@ -34,6 +34,7 @@ interface AnnotationLayerProps {
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
   onDeleteAnnotation: (id: string) => void
   onSelectAnnotation: (id: string | null) => void
+  onToolChange: (tool: AnnotationTool) => void
 }
 
 interface DrawingState {
@@ -63,7 +64,8 @@ export default function AnnotationLayer({
   onAddAnnotation,
   onUpdateAnnotation,
   onDeleteAnnotation,
-  onSelectAnnotation
+  onSelectAnnotation,
+  onToolChange
 }: AnnotationLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null)
   const [drawing, setDrawing] = useState<DrawingState | null>(null)
@@ -97,24 +99,62 @@ export default function AnnotationLayer({
     }
   }, [annotations, pendingTextAnnotation])
 
-  // Select all text when editing starts with placeholder
+  // Select all text when editing starts (placeholder or double-click)
+  const [selectAllOnEdit, setSelectAllOnEdit] = useState(false)
+
   useEffect(() => {
-    if (isPlaceholderText && editingTextId) {
+    if ((isPlaceholderText || selectAllOnEdit) && editingTextId) {
       // Use setTimeout to ensure textarea is mounted and focused first
       const timer = setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus()
           textareaRef.current.select()
         }
+        setSelectAllOnEdit(false)
       }, 0)
       return () => clearTimeout(timer)
     }
-  }, [isPlaceholderText, editingTextId])
+  }, [isPlaceholderText, selectAllOnEdit, editingTextId])
 
   // Reset textarea width when starting to edit a different annotation
   useEffect(() => {
     setTextareaWidth(null)
   }, [editingTextId])
+
+  // Track previous tool to detect tool changes
+  const prevToolRef = useRef(currentTool)
+
+  // Finish text editing when switching away from text tool
+  useEffect(() => {
+    const prevTool = prevToolRef.current
+    prevToolRef.current = currentTool
+
+    // Only finish if we switched FROM text tool to another tool while editing
+    if (prevTool === 'text' && currentTool !== 'text' && editingTextId) {
+      // Save or delete the annotation
+      const shouldDelete = !editingContent.trim() || isPlaceholderText
+      if (!shouldDelete) {
+        const updates: { content: string; width?: number; height?: number } = { content: editingContent }
+        if (textareaWidth !== null) {
+          updates.width = textareaWidth / canvasWidth
+        } else if (textareaRef.current) {
+          updates.width = textareaRef.current.offsetWidth / canvasWidth
+        }
+        if (textareaRef.current) {
+          updates.height = textareaRef.current.offsetHeight / canvasHeight
+        }
+        onUpdateAnnotation(editingTextId, updates)
+      } else {
+        onDeleteAnnotation(editingTextId)
+      }
+      // Clear editing state
+      setEditingTextId(null)
+      setEditingContent('')
+      setIsPlaceholderText(false)
+      setPendingTextAnnotation(null)
+      setTextareaWidth(null)
+    }
+  }, [currentTool, editingTextId, editingContent, isPlaceholderText, textareaWidth, canvasWidth, canvasHeight, onUpdateAnnotation, onDeleteAnnotation])
 
   // Handle resize mouse move and mouse up on document
   useEffect(() => {
@@ -484,6 +524,7 @@ export default function AnnotationLayer({
     setEditingTextId(annotation.id)
     setEditingContent(annotation.content)
     setIsPlaceholderText(false) // Not a placeholder when editing existing
+    setSelectAllOnEdit(true) // Select all text when starting to edit
   }, [])
 
   // Finish editing text annotation (save content and size)
@@ -565,7 +606,7 @@ export default function AnnotationLayer({
     setPendingTextAnnotation(null)
   }, [])
 
-  // Handle double-click to edit text
+  // Handle double-click to edit text - switch to text tool and start editing
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     if (currentTool !== 'select') return
 
@@ -573,9 +614,10 @@ export default function AnnotationLayer({
     const clickedAnnotation = findAnnotationAt(pos, 'text')
 
     if (clickedAnnotation) {
+      onToolChange('text')
       startTextEdit(clickedAnnotation)
     }
-  }, [currentTool, getMousePos, findAnnotationAt, startTextEdit])
+  }, [currentTool, getMousePos, findAnnotationAt, startTextEdit, onToolChange])
 
   // Render a single annotation
   const renderAnnotation = (annotation: Annotation) => {

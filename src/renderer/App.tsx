@@ -544,11 +544,37 @@ export default function App() {
         handlePastePages()
         return
       }
+
+      // Escape: Deselect annotation (stay on current tool)
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        selectAnnotation(null)
+        return
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationId, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo])
+  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationId, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation])
+
+  // Ctrl+Mouse Wheel zoom
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+        // deltaY negative = scroll up = zoom in, positive = scroll down = zoom out
+        if (e.deltaY < 0) {
+          setZoom(z => Math.min(3, z + 0.1))
+        } else {
+          setZoom(z => Math.max(0.25, z - 0.1))
+        }
+      }
+    }
+
+    // Use passive: false to allow preventDefault
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    return () => window.removeEventListener('wheel', handleWheel)
+  }, [])
 
   // Get current page info for viewer
   const currentPage = pages[selectedPageIndex]
@@ -667,6 +693,7 @@ export default function App() {
           onUpdateAnnotation={wrappedUpdateAnnotation}
           onDeleteAnnotation={wrappedDeleteAnnotation}
           onSelectAnnotation={selectAnnotation}
+          onToolChange={setCurrentTool}
         />
       </div>
     </div>
