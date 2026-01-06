@@ -54,3 +54,8 @@
 .context-menu button:hover {
   background: #0066cc;
 }
+
+/* Remove default focus outline from sortable items - selection shown via thumbnail styling */
+.sidebar [tabindex] {
+  outline: none;
+}

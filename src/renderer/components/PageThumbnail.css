@@ -6,6 +6,7 @@
   cursor: pointer;
   border-radius: 4px;
   transition: background 0.15s;
+  outline: none; /* Remove default browser focus ring - selection shown via background color */
 }
 
 .page-thumbnail:hover {
