@@ -58,7 +58,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "CC-BY-NC-4.0",
   "type": "commonjs",
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

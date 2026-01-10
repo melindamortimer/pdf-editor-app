@@ -10,7 +10,9 @@ Download the latest release for your platform from the [Releases page](../../rel
 
 ### macOS
 
-**Download:** `DocuMint PDF Editor-x.x.x-arm64.dmg` (Apple Silicon M1/M2/M3/M4) or `DocuMint PDF Editor-x.x.x-x64.dmg` (Intel)
+**Download:**
+- `DocuMint PDF Editor-x.x.x-arm64.dmg` (Apple Silicon M1/M2/M3/M4) 
+- `DocuMint PDF Editor-x.x.x-x64.dmg` (Intel)
 
 **Steps:**
 1. Open the downloaded `.dmg` file
@@ -28,7 +30,6 @@ The app is not signed with an Apple Developer certificate, so macOS will block i
    ```
 3. Now open the app from Applications normally
 
-*Alternative:* Right-click the app → Open → Click "Open" in the dialog → Go to System Settings → Privacy & Security → Click "Open Anyway"
 
 ---
 
@@ -364,4 +365,4 @@ npm run package
 
 ## License
 
-MIT
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) - Free to use and modify, but not for commercial purposes.
