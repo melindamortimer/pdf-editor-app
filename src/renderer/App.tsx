@@ -693,6 +693,47 @@ export default function App() {
     return () => window.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Check for initial file to open (when app opened via file association)
+  useEffect(() => {
+    const checkInitialFile = async () => {
+      try {
+        const filePath = await window.electronAPI.getInitialFile()
+        if (filePath) {
+          // Load the file using the same logic as handleOpenFiles
+          const data = await window.electronAPI.readFile(filePath)
+          const id = crypto.randomUUID()
+          const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'Unknown'
+
+          const viewerBuffer = new Uint8Array(data).buffer
+          const manipulatorBuffer = new Uint8Array(data).buffer
+
+          const pdf = await loadPdfDocument(viewerBuffer, id)
+          const pageCount = pdf.numPages
+
+          await loadPdfForManipulation(id, manipulatorBuffer)
+
+          const newDoc: PdfDocument = { id, name, path: filePath, pageCount }
+          const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
+            id: crypto.randomUUID(),
+            documentId: id,
+            pageIndex: i,
+            originalPageIndex: i
+          }))
+
+          setDocuments([newDoc])
+          setPages(newPages)
+          initialPagesRef.current = serializePageState(newPages)
+          setCurrentFilePath(filePath)
+          setHasUnsavedChanges(false)
+        }
+      } catch (error) {
+        console.error('Error loading initial file:', error)
+      }
+    }
+
+    checkInitialFile()
+  }, []) // Run once on mount
+
   // Get current page info for viewer
   const currentPage = pages[selectedPageIndex]
 
