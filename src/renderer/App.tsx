@@ -57,40 +57,42 @@ export default function App() {
     discardAllAnnotations
   } = useAnnotations()
 
+  // Load a single PDF file and return its document/pages data
+  const loadPdfFile = useCallback(async (filePath: string): Promise<{ doc: PdfDocument; pages: PdfPage[] }> => {
+    const data = await window.electronAPI.readFile(filePath)
+    const id = crypto.randomUUID()
+    const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'Unknown'
+
+    // Create separate ArrayBuffers for each library
+    // (PDF.js may transfer its buffer to a worker, detaching it)
+    const viewerBuffer = new Uint8Array(data).buffer
+    const manipulatorBuffer = new Uint8Array(data).buffer
+
+    const pdf = await loadPdfDocument(viewerBuffer, id)
+    await loadPdfForManipulation(id, manipulatorBuffer)
+
+    const doc: PdfDocument = { id, name, path: filePath, pageCount: pdf.numPages }
+    const pages: PdfPage[] = Array.from({ length: pdf.numPages }, (_, i) => ({
+      id: crypto.randomUUID(),
+      documentId: id,
+      pageIndex: i,
+      originalPageIndex: i
+    }))
+
+    return { doc, pages }
+  }, [])
+
   const handleOpenFiles = useCallback(async () => {
     try {
       const filePaths = await window.electronAPI.openFileDialog()
       if (filePaths.length === 0) return
 
       for (const filePath of filePaths) {
-        const data = await window.electronAPI.readFile(filePath)
-        const id = crypto.randomUUID()
-        const name = filePath.split('/').pop() || filePath.split('\\').pop() || 'Unknown'
-
-        // Create separate ArrayBuffers for each library
-        // (PDF.js may transfer its buffer to a worker, detaching it)
-        const viewerBuffer = new Uint8Array(data).buffer
-        const manipulatorBuffer = new Uint8Array(data).buffer
-
-        // Load for viewing (PDF.js)
-        const pdf = await loadPdfDocument(viewerBuffer, id)
-        const pageCount = pdf.numPages
-
-        // Load for manipulation (pdf-lib)
-        await loadPdfForManipulation(id, manipulatorBuffer)
-
-        const newDoc: PdfDocument = { id, name, path: filePath, pageCount }
-        const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
-          id: crypto.randomUUID(),
-          documentId: id,
-          pageIndex: i,
-          originalPageIndex: i
-        }))
+        const { doc: newDoc, pages: newPages } = await loadPdfFile(filePath)
 
         setDocuments(prev => [...prev, newDoc])
         setPages(prev => {
           const updated = [...prev, ...newPages]
-          // Update initial state reference
           initialPagesRef.current = serializePageState(updated)
           return updated
         })
@@ -110,7 +112,7 @@ export default function App() {
     } catch (error) {
       console.error('Error opening PDF:', error)
     }
-  }, [documents.length])
+  }, [documents.length, loadPdfFile])
 
   const handleCloseDocument = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -261,6 +263,29 @@ export default function App() {
     setSelectedPageIndex(insertAfter + 1)
   }, [copiedPages, selectedPageIndices, selectedPageIndex, pushPageToHistory])
 
+  // Reset state and reload a file after saving
+  const resetAndReloadFile = useCallback(async (filePath: string): Promise<void> => {
+    clearAllPdfCache()
+    setDocuments([])
+    setPages([])
+    discardAllAnnotations()
+    setHistoryStack([])
+    setFutureStack([])
+    setSelectedPageIndex(0)
+    setSelectedPageIndices(new Set([0]))
+    setCopiedPages([])
+
+    const { doc, pages: newPages } = await loadPdfFile(filePath)
+    setDocuments([doc])
+    setPages(newPages)
+    initialPagesRef.current = serializePageState(newPages)
+    setCurrentFilePath(filePath)
+    setHasUnsavedChanges(false)
+
+    // Blur any focused button so space key works for panning
+    ;(document.activeElement as HTMLElement)?.blur?.()
+  }, [loadPdfFile, discardAllAnnotations])
+
   // Save As - always prompts for new location
   const handleSaveAs = useCallback(async () => {
     if (pages.length === 0) return
@@ -268,53 +293,14 @@ export default function App() {
     try {
       const savedPath = await saveAsNewFile(pages, annotations)
       if (savedPath) {
-        // Clear all state
-        clearAllPdfCache()
-        setDocuments([])
-        setPages([])
-        discardAllAnnotations()
-        setHistoryStack([])
-        setFutureStack([])
-        setSelectedPageIndex(0)
-        setSelectedPageIndices(new Set([0]))
-        setCopiedPages([])
         setShowSaveWarning(false)
-
-        // Reopen the saved file fresh
-        const data = await window.electronAPI.readFile(savedPath)
-        const id = crypto.randomUUID()
-        const name = savedPath.split('/').pop() || savedPath.split('\\').pop() || 'document.pdf'
-
-        const viewerBuffer = new Uint8Array(data).buffer
-        const manipulatorBuffer = new Uint8Array(data).buffer
-
-        const pdf = await loadPdfDocument(viewerBuffer, id)
-        const pageCount = pdf.numPages
-
-        await loadPdfForManipulation(id, manipulatorBuffer)
-
-        const newDoc: PdfDocument = { id, name, path: savedPath, pageCount }
-        const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
-          id: crypto.randomUUID(),
-          documentId: id,
-          pageIndex: i,
-          originalPageIndex: i
-        }))
-
-        setDocuments([newDoc])
-        setPages(newPages)
-        initialPagesRef.current = serializePageState(newPages)
-        setCurrentFilePath(savedPath)
-        setHasUnsavedChanges(false)
-
-        // Blur any focused button so space key works for panning
-        ;(document.activeElement as HTMLElement)?.blur?.()
+        await resetAndReloadFile(savedPath)
       }
     } catch (error) {
       console.error('Save As failed:', error)
       alert('Failed to save file. Please try again.')
     }
-  }, [pages, annotations, discardAllAnnotations])
+  }, [pages, annotations, resetAndReloadFile])
 
   // Save - overwrites current file (with warning on first save)
   const handleSave = useCallback(async () => {
@@ -333,59 +319,20 @@ export default function App() {
         '(Use "Save As" to save to a new location)'
       )
       if (!confirmed) return
-      setShowSaveWarning(true) // Don't ask again this session
+      setShowSaveWarning(true)
     }
 
     try {
       const success = await saveToFile(currentFilePath, pages, annotations)
       if (success) {
-        // Clear all state
-        clearAllPdfCache()
-        setDocuments([])
-        setPages([])
-        discardAllAnnotations()
-        setHistoryStack([])
-        setFutureStack([])
-        setSelectedPageIndex(0)
-        setSelectedPageIndices(new Set([0]))
-        setCopiedPages([])
-
-        // Reopen the saved file fresh
-        const data = await window.electronAPI.readFile(currentFilePath)
-        const id = crypto.randomUUID()
-        const name = currentFilePath.split('/').pop() || currentFilePath.split('\\').pop() || 'document.pdf'
-
-        const viewerBuffer = new Uint8Array(data).buffer
-        const manipulatorBuffer = new Uint8Array(data).buffer
-
-        const pdf = await loadPdfDocument(viewerBuffer, id)
-        const pageCount = pdf.numPages
-
-        await loadPdfForManipulation(id, manipulatorBuffer)
-
-        const newDoc: PdfDocument = { id, name, path: currentFilePath, pageCount }
-        const newPages: PdfPage[] = Array.from({ length: pageCount }, (_, i) => ({
-          id: crypto.randomUUID(),
-          documentId: id,
-          pageIndex: i,
-          originalPageIndex: i
-        }))
-
-        setDocuments([newDoc])
-        setPages(newPages)
-        initialPagesRef.current = serializePageState(newPages)
-        setCurrentFilePath(currentFilePath)
-        setHasUnsavedChanges(false)
+        await resetAndReloadFile(currentFilePath)
         setShowSaveWarning(true) // Keep the warning state for this file
-
-        // Blur any focused button so space key works for panning
-        ;(document.activeElement as HTMLElement)?.blur?.()
       }
     } catch (error) {
       console.error('Save failed:', error)
       alert('Failed to save file. Please try again.')
     }
-  }, [pages, documents.length, currentFilePath, showSaveWarning, annotations, discardAllAnnotations, handleSaveAs])
+  }, [pages, documents.length, currentFilePath, showSaveWarning, annotations, resetAndReloadFile, handleSaveAs])
 
   // Page undo - restores previous page state from history stack
   const pageUndo = useCallback((entry: HistoryEntry & { type: 'pages' }) => {
@@ -692,6 +639,27 @@ export default function App() {
     window.addEventListener('wheel', handleWheel, { passive: false })
     return () => window.removeEventListener('wheel', handleWheel)
   }, [])
+
+  // Check for initial file to open (when app opened via file association)
+  useEffect(() => {
+    async function checkInitialFile(): Promise<void> {
+      try {
+        const filePath = await window.electronAPI.getInitialFile()
+        if (!filePath) return
+
+        const { doc, pages: newPages } = await loadPdfFile(filePath)
+        setDocuments([doc])
+        setPages(newPages)
+        initialPagesRef.current = serializePageState(newPages)
+        setCurrentFilePath(filePath)
+        setHasUnsavedChanges(false)
+      } catch (error) {
+        console.error('Error loading initial file:', error)
+      }
+    }
+
+    checkInitialFile()
+  }, [loadPdfFile])
 
   // Get current page info for viewer
   const currentPage = pages[selectedPageIndex]

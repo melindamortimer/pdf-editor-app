@@ -31,6 +31,14 @@
       "target": [
         "dmg",
         "zip"
+      ],
+      "fileAssociations": [
+        {
+          "ext": "pdf",
+          "name": "PDF Document",
+          "role": "Editor",
+          "icon": "resources/icon.icns"
+        }
       ]
     },
     "win": {

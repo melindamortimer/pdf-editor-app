@@ -4,6 +4,7 @@ export interface ElectronAPI {
   saveFile: (filePath: string, data: Uint8Array) => Promise<boolean>
   saveFileDialog: () => Promise<string | undefined>
   loadSystemFont: (fontName: string) => Promise<Uint8Array | null>
+  getInitialFile: () => Promise<string | null>
 }
 
 declare global {

@@ -3,7 +3,23 @@ import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
 
+// Store pending file path for windows (windowId -> filePath)
+const pendingFiles = new Map<number, string>()
+
+export function setPendingFile(windowId: number, filePath: string) {
+  pendingFiles.set(windowId, filePath)
+}
+
 export function setupIpcHandlers() {
+  ipcMain.handle('get-initial-file', (event) => {
+    const windowId = event.sender.id
+    const filePath = pendingFiles.get(windowId)
+    if (filePath) {
+      pendingFiles.delete(windowId)
+      return filePath
+    }
+    return null
+  })
   ipcMain.handle('open-file-dialog', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile', 'multiSelections'],
