@@ -77,6 +77,8 @@ export default function AnnotationLayer({
   const [pendingTextAnnotation, setPendingTextAnnotation] = useState<Annotation | null>(null)
   // Track if we just started editing to ignore spurious blur events
   const justStartedEditing = useRef(false)
+  // Track tool to restore after double-click edit (null = don't restore)
+  const toolToRestoreRef = useRef<AnnotationTool | null>(null)
   // Track the textarea ref for selecting placeholder text
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   // Track custom resize state for text annotations
@@ -153,6 +155,8 @@ export default function AnnotationLayer({
       setIsPlaceholderText(false)
       setPendingTextAnnotation(null)
       setTextareaWidth(null)
+      // User manually switched tools, don't restore
+      toolToRestoreRef.current = null
     }
   }, [currentTool, editingTextId, editingContent, isPlaceholderText, textareaWidth, canvasWidth, canvasHeight, onUpdateAnnotation, onDeleteAnnotation])
 
@@ -372,6 +376,11 @@ export default function AnnotationLayer({
         setPendingTextAnnotation(null)
         setTextareaWidth(null)
         onSelectAnnotation(null)
+        // Restore previous tool if editing was started via double-click
+        if (toolToRestoreRef.current) {
+          onToolChange(toolToRestoreRef.current)
+          toolToRestoreRef.current = null
+        }
         return
       }
 
@@ -404,7 +413,7 @@ export default function AnnotationLayer({
       setIsPlaceholderText(true)
       justStartedEditing.current = true
     }
-  }, [currentTool, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, findAnnotationAt, onAddAnnotation, onUpdateAnnotation, onSelectAnnotation, textFont, textSize, textColor, editingTextId, editingContent])
+  }, [currentTool, pageId, canvasWidth, canvasHeight, getMousePos, toNormalized, findAnnotationAt, onAddAnnotation, onUpdateAnnotation, onDeleteAnnotation, onSelectAnnotation, onToolChange, textFont, textSize, textColor, editingTextId, editingContent, isPlaceholderText, textareaWidth])
 
   // Handle mouse move
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -572,7 +581,12 @@ export default function AnnotationLayer({
     setIsPlaceholderText(false)
     setPendingTextAnnotation(null)
     setTextareaWidth(null)
-  }, [editingTextId, editingContent, isPlaceholderText, canvasWidth, canvasHeight, onUpdateAnnotation, onDeleteAnnotation, resizing, textareaWidth])
+    // Restore previous tool if editing was started via double-click
+    if (toolToRestoreRef.current) {
+      onToolChange(toolToRestoreRef.current)
+      toolToRestoreRef.current = null
+    }
+  }, [editingTextId, editingContent, isPlaceholderText, canvasWidth, canvasHeight, onUpdateAnnotation, onDeleteAnnotation, resizing, textareaWidth, onToolChange])
 
   // Start custom resize for text
   const startResize = useCallback((e: React.MouseEvent) => {
@@ -614,6 +628,8 @@ export default function AnnotationLayer({
     const clickedAnnotation = findAnnotationAt(pos, 'text')
 
     if (clickedAnnotation) {
+      // Remember to restore select tool after editing
+      toolToRestoreRef.current = 'select'
       onToolChange('text')
       startTextEdit(clickedAnnotation)
     }
