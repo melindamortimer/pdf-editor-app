@@ -7,6 +7,7 @@ export interface ElectronAPI {
   getInitialFiles: () => Promise<string[]>
   closeWindow: () => Promise<void>
   quitApp: () => Promise<void>
+  setWindowTitle: (title: string) => Promise<void>
 }
 
 declare global {

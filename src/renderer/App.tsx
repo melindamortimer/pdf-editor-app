@@ -652,6 +652,15 @@ export default function App() {
     return () => window.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Update window title when documents change
+  useEffect(() => {
+    if (documents.length > 0) {
+      window.electronAPI.setWindowTitle(documents[0].name)
+    } else {
+      window.electronAPI.setWindowTitle('Documint')
+    }
+  }, [documents])
+
   // Check for initial files to open (when app opened via file association)
   useEffect(() => {
     async function checkInitialFiles(): Promise<void> {

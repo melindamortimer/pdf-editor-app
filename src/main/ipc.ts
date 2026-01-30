@@ -32,6 +32,13 @@ export function setupIpcHandlers() {
     const { app } = require('electron')
     app.quit()
   })
+
+  ipcMain.handle('set-window-title', (event, title: string) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      window.setTitle(title)
+    }
+  })
   ipcMain.handle('open-file-dialog', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile', 'multiSelections'],

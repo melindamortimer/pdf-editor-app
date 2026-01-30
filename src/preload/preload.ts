@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('load-system-font', fontName),
   getInitialFiles: (): Promise<string[]> => ipcRenderer.invoke('get-initial-files'),
   closeWindow: () => ipcRenderer.invoke('close-window'),
-  quitApp: () => ipcRenderer.invoke('quit-app')
+  quitApp: () => ipcRenderer.invoke('quit-app'),
+  setWindowTitle: (title: string) => ipcRenderer.invoke('set-window-title', title)
 })
