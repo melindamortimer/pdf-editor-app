@@ -592,7 +592,7 @@ export default function TextLayer({
 
   return (
     <div
-      className={`text-layer ${debug ? 'debug' : ''} ${isTextTool ? 'text-tool-active' : ''}`}
+      className={`text-layer ${debug ? 'debug' : ''} ${isTextTool ? 'text-tool-active' : ''} ${currentTool === 'eraser' ? 'eraser-tool' : ''}`}
       style={{ width, height }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

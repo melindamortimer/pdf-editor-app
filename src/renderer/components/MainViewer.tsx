@@ -212,7 +212,16 @@ export default function MainViewer({
       )}
       {rendering && <div className="loading">Rendering...</div>}
       <div className="canvas-wrapper" style={{ display: isEmpty ? 'none' : undefined }}>
-        <div className="canvas-container" style={{ position: 'relative', display: 'inline-block' }}>
+        <div
+          className="canvas-container"
+          style={{
+            position: 'relative',
+            display: 'inline-block',
+            cursor: currentTool === 'eraser'
+              ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 4 20, crosshair`
+              : undefined
+          }}
+        >
           <canvas
             ref={canvasRef}
             style={{ display: hasContent ? 'block' : 'none' }}

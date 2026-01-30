@@ -13,6 +13,11 @@
   cursor: text;
 }
 
+/* Eraser tool inherits cursor from parent (canvas-container) */
+.text-layer.eraser-tool {
+  cursor: inherit;
+}
+
 /* Individual text boxes - invisible by default */
 .text-box {
   position: absolute;

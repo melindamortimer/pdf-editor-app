@@ -25,12 +25,12 @@ const ZOOM_PRESETS = [
 
 const ANNOTATION_TOOLS: { id: AnnotationTool; label: string; icon: string; iconSrc?: string; shortcut: string }[] = [
   { id: 'select', label: 'Select', icon: '↖', iconSrc: cursorIcon, shortcut: 'S' },
+  { id: 'pen', label: 'Pen', icon: '✎', shortcut: 'P' },
   { id: 'eraser', label: 'Eraser', icon: '⌫', iconSrc: eraserIcon, shortcut: 'E' },
   { id: 'highlight', label: 'Highlight', icon: '▮', iconSrc: highlighterIcon, shortcut: 'H' },
   { id: 'underline', label: 'Underline', icon: 'U', shortcut: 'U' },
   { id: 'strikethrough', label: 'Strikethrough', icon: 'S', shortcut: 'K' },
   { id: 'box', label: 'Box', icon: '☐', iconSrc: rectangleIcon, shortcut: 'B' },
-  { id: 'pen', label: 'Pen', icon: '✎', shortcut: 'P' },
   { id: 'text', label: 'Text', icon: 'T', shortcut: 'T' }
 ]
 
@@ -235,7 +235,9 @@ export default function Toolbar({
             {tool.iconSrc ? (
               <img src={tool.iconSrc} alt={tool.label} className="tool-icon" />
             ) : (
-              tool.icon
+              <span style={tool.id === 'pen' ? { display: 'inline-block', transform: 'scaleX(-1)' } : undefined}>
+                {tool.icon}
+              </span>
             )}
           </button>
         ))}

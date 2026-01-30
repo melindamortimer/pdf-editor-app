@@ -94,6 +94,11 @@ export default function AnnotationLayer({
   // Track custom resize state for text annotations
   const [resizing, setResizing] = useState<{ startX: number; startWidth: number } | null>(null)
   const [textareaWidth, setTextareaWidth] = useState<number | null>(null)
+  // Track pen annotations marked for erasure (shown greyed out until mouse up)
+  const [pendingErase, setPendingErase] = useState<Set<string>>(new Set())
+  // Track if eraser is actively dragging
+  const [eraserDragging, setEraserDragging] = useState(false)
+
   // Track resize state for box annotations
   const [boxResizing, setBoxResizing] = useState<{
     id: string
@@ -238,6 +243,100 @@ export default function AnnotationLayer({
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [boxResizing, canvasWidth, canvasHeight, onUpdateAnnotation])
+
+  // Handle eraser drag: mousedown to start, mousemove to detect intersections, mouseup to confirm, escape to cancel
+  useEffect(() => {
+    if (currentTool !== 'eraser') return
+
+    const getLayerPos = (e: MouseEvent) => {
+      if (!layerRef.current) return null
+      const rect = layerRef.current.getBoundingClientRect()
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    }
+
+    const findHitPens = (pos: { x: number; y: number }) => {
+      return annotations.filter(ann => {
+        if (ann.type !== 'pen') return false
+        const threshold = Math.max(ann.strokeWidth * zoom, 8)
+
+        for (let i = 1; i < ann.points.length; i++) {
+          const p1 = { x: ann.points[i - 1][0] * canvasWidth, y: ann.points[i - 1][1] * canvasHeight }
+          const p2 = { x: ann.points[i][0] * canvasWidth, y: ann.points[i][1] * canvasHeight }
+
+          const dx = p2.x - p1.x
+          const dy = p2.y - p1.y
+          const lengthSq = dx * dx + dy * dy
+
+          let t = 0
+          if (lengthSq > 0) {
+            t = Math.max(0, Math.min(1, ((pos.x - p1.x) * dx + (pos.y - p1.y) * dy) / lengthSq))
+          }
+
+          const nearestX = p1.x + t * dx
+          const nearestY = p1.y + t * dy
+          const distSq = (pos.x - nearestX) ** 2 + (pos.y - nearestY) ** 2
+
+          if (distSq <= threshold ** 2) return true
+        }
+        return false
+      })
+    }
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return // Only left click
+      const pos = getLayerPos(e)
+      if (!pos) return
+
+      // Start eraser drag for pen marks (TextLayer handles text annotations separately)
+      setEraserDragging(true)
+      const hitPens = findHitPens(pos)
+      if (hitPens.length > 0) {
+        setPendingErase(new Set(hitPens.map(ann => ann.id)))
+      }
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!eraserDragging) return
+      const pos = getLayerPos(e)
+      if (!pos) return
+
+      const hitPens = findHitPens(pos)
+      if (hitPens.length > 0) {
+        setPendingErase(prev => {
+          const next = new Set(prev)
+          hitPens.forEach(ann => next.add(ann.id))
+          return next
+        })
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (!eraserDragging) return
+      // Delete all pending erase annotations
+      pendingErase.forEach(id => onDeleteAnnotation(id))
+      setPendingErase(new Set())
+      setEraserDragging(false)
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && eraserDragging) {
+        setPendingErase(new Set())
+        setEraserDragging(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [currentTool, eraserDragging, pendingErase, annotations, canvasWidth, canvasHeight, zoom, onDeleteAnnotation])
 
 
   // Convert pixel coordinates to normalized (0-1) coordinates
@@ -840,6 +939,8 @@ export default function AnnotationLayer({
         }
         const padding = 4 // Padding around the stroke
 
+        const isPendingErase = pendingErase.has(annotation.id)
+
         return (
           <svg
             key={annotation.id}
@@ -851,7 +952,8 @@ export default function AnnotationLayer({
               width: canvasWidth,
               height: canvasHeight,
               pointerEvents: currentTool === 'select' ? 'auto' : 'none',
-              overflow: 'visible'
+              overflow: 'visible',
+              opacity: isPendingErase ? 0.4 : 1
             }}
           >
             {/* Selection bounding box */}
@@ -870,7 +972,7 @@ export default function AnnotationLayer({
             )}
             <path
               d={pathPoints}
-              stroke={annotation.color}
+              stroke={isPendingErase ? '#888' : annotation.color}
               strokeWidth={annotation.strokeWidth * zoom}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -1076,6 +1178,12 @@ export default function AnnotationLayer({
         return 'default'
       case 'text':
         return 'text'
+      case 'pen':
+        // Custom pen cursor - SVG pen icon with hotspot at tip
+        return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E") 2 22, crosshair`
+      case 'eraser':
+        // Custom eraser cursor - rectangular eraser with hotspot at bottom corner
+        return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 4 20, crosshair`
       default:
         return 'crosshair'
     }
