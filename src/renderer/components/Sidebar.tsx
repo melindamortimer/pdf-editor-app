@@ -106,8 +106,8 @@ export default function Sidebar({
 
   const isResizing = dragWidth !== null
 
-  // Calculate thumbnail width (sidebar width minus padding)
-  const thumbnailWidth = width - 32
+  // Calculate thumbnail width (sidebar width minus padding and selection box margin)
+  const thumbnailWidth = width - 68
 
   // Handle resize drag
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
