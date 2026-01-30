@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useAnnotations } from './useAnnotations'
-import type { HighlightAnnotation, BoxAnnotation, TextAnnotation } from '../types/annotations'
+import type { HighlightAnnotation } from '../types/annotations'
 
 describe('useAnnotations', () => {
   describe('initial state', () => {

@@ -8,7 +8,7 @@ const defaultProps = {
   canSave: false,
   zoom: 1,
   currentTool: 'select' as const,
-  highlightColor: 'yellow' as const,
+  highlightColor: '#ffeb3b',
   lineColor: '#000000',
   boxColor: '#ff0000',
   boxFillColor: 'transparent',
