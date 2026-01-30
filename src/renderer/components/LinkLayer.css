@@ -1,0 +1,31 @@
+.link-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.pdf-link {
+  position: absolute;
+  display: block;
+  pointer-events: auto;
+  border-radius: 2px;
+  transition: background-color 0.15s ease, outline 0.15s ease;
+  text-decoration: none;
+  /* Debug: outline: 1px dashed rgba(255, 0, 0, 0.5); */
+}
+
+.pdf-link:hover {
+  background-color: rgba(0, 100, 255, 0.1);
+}
+
+/* Show stronger styling when modifier key is held */
+.link-layer.modifier-active .pdf-link {
+  cursor: pointer !important;
+}
+
+.link-layer.modifier-active .pdf-link:hover {
+  background-color: rgba(0, 100, 255, 0.2);
+  outline: 2px solid rgba(0, 100, 255, 0.5);
+}

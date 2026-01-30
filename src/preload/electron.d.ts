@@ -8,6 +8,7 @@ export interface ElectronAPI {
   closeWindow: () => Promise<void>
   quitApp: () => Promise<void>
   setWindowTitle: (title: string) => Promise<void>
+  openExternalUrl: (url: string) => Promise<boolean>
 }
 
 declare global {

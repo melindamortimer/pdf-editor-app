@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron'
+import { ipcMain, dialog, BrowserWindow, shell } from 'electron'
 import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
@@ -38,6 +38,15 @@ export function setupIpcHandlers() {
     if (window) {
       window.setTitle(title)
     }
+  })
+
+  ipcMain.handle('open-external-url', async (_, url: string) => {
+    // Only allow http/https URLs for security
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      await shell.openExternal(url)
+      return true
+    }
+    return false
   })
   ipcMain.handle('open-file-dialog', async () => {
     const result = await dialog.showOpenDialog({

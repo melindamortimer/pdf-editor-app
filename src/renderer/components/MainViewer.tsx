@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { renderPage } from '../services/pdfRenderer'
 import TextLayer from './TextLayer'
+import LinkLayer from './LinkLayer'
 import AnnotationLayer from './AnnotationLayer'
 import type { Annotation, AnnotationTool, BoxThickness, PenWidth, TextFont } from '../types/annotations'
 import './MainViewer.css'
@@ -274,6 +275,15 @@ export default function MainViewer({
               onUpdateAnnotation={onUpdateAnnotation}
               onDeleteAnnotation={onDeleteAnnotation}
               debug={false}
+            />
+          )}
+          {hasContent && documentId && canvasDimensions.width > 0 && (
+            <LinkLayer
+              documentId={documentId}
+              pageIndex={pageIndex}
+              width={canvasDimensions.width}
+              height={canvasDimensions.height}
+              scale={zoom}
             />
           )}
           {hasContent && pageId && canvasDimensions.width > 0 && (

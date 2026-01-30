@@ -16,7 +16,8 @@ vi.mock('@services/pdfRenderer', () => ({
       height: 1000,
       rawDims: { pageWidth: 800, pageHeight: 1000 }
     }
-  })
+  }),
+  getPageLinks: vi.fn().mockResolvedValue([])
 }))
 
 // Helper to wait for render effects to settle
