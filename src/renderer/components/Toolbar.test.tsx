@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { renderWithProviders, screen } from '@test/render'
+import { renderWithProviders, screen, fireEvent } from '@test/render'
 import Toolbar from './Toolbar'
 
 const defaultProps = {
@@ -261,41 +261,45 @@ describe('Toolbar', () => {
     })
 
     it('shows color picker when highlight tool is selected', () => {
-      renderWithProviders(
+      const { container } = renderWithProviders(
         <Toolbar {...defaultProps} hasDocuments={true} currentTool="highlight" />
       )
 
-      expect(screen.getByTitle('Highlight color')).toBeInTheDocument()
+      // ColorPicker component should be visible
+      expect(container.querySelector('.color-picker')).toBeInTheDocument()
     })
 
     it('does not show color picker for other tools', () => {
       renderWithProviders(
-        <Toolbar {...defaultProps} hasDocuments={true} currentTool="box" />
+        <Toolbar {...defaultProps} hasDocuments={true} currentTool="select" />
       )
 
-      expect(screen.queryByTitle('Highlight color')).not.toBeInTheDocument()
+      // No color picker visible in select mode without selection
+      expect(screen.queryByTitle('Color')).not.toBeInTheDocument()
     })
   })
 
   describe('Text Controls', () => {
     it('shows text controls when text tool is selected', () => {
-      renderWithProviders(
+      const { container } = renderWithProviders(
         <Toolbar {...defaultProps} hasDocuments={true} currentTool="text" />
       )
 
       expect(screen.getByTitle('Font')).toBeInTheDocument()
       expect(screen.getByTitle('Font size')).toBeInTheDocument()
-      expect(screen.getByTitle('Text color')).toBeInTheDocument()
+      // Text color uses ColorPicker with label "Color"
+      expect(container.querySelector('.color-picker')).toBeInTheDocument()
     })
 
     it('shows text controls when text annotation is selected', () => {
-      renderWithProviders(
+      const { container } = renderWithProviders(
         <Toolbar {...defaultProps} hasDocuments={true} currentTool="select" selectedAnnotationType="text" />
       )
 
       expect(screen.getByTitle('Font')).toBeInTheDocument()
       expect(screen.getByTitle('Font size')).toBeInTheDocument()
-      expect(screen.getByTitle('Text color')).toBeInTheDocument()
+      // Text color uses ColorPicker with label "Color"
+      expect(container.querySelector('.color-picker')).toBeInTheDocument()
     })
 
     it('does not show text controls for other tools', () => {
@@ -372,14 +376,16 @@ describe('Toolbar', () => {
       expect(onTextSizeChange).toHaveBeenCalledWith(18)
     })
 
-    it('calls onTextColorChange when color selected', async () => {
+    it('calls onTextColorChange when color changed', async () => {
       const onTextColorChange = vi.fn()
-      const { user } = renderWithProviders(
+      const { container } = renderWithProviders(
         <Toolbar {...defaultProps} hasDocuments={true} currentTool="text" onTextColorChange={onTextColorChange} />
       )
 
-      await user.click(screen.getByTitle('Text color'))
-      await user.click(screen.getByTitle('Red'))
+      // Find the color input and change its value
+      const colorInput = container.querySelector('.color-input') as HTMLInputElement
+      expect(colorInput).toBeInTheDocument()
+      fireEvent.change(colorInput, { target: { value: '#ff0000' } })
 
       expect(onTextColorChange).toHaveBeenCalledWith('#ff0000')
     })

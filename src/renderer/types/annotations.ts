@@ -105,7 +105,7 @@ export const PEN_WIDTH_OPTIONS: PenWidth[] = [1, 2, 4, 8]
 // Default colors
 export const DEFAULT_LINE_COLOR = '#000000' // Black for underline/strikethrough
 export const DEFAULT_BOX_COLOR = '#ff0000' // Red for box outline
-export const DEFAULT_BOX_FILL_COLOR = '#ffffff' // White fill by default (100% opacity)
+export const DEFAULT_BOX_FILL_COLOR = 'transparent' // Transparent fill by default
 export const DEFAULT_HIGHLIGHT_COLOR = '#ffeb3b' // Yellow
 export const DEFAULT_PEN_COLOR = '#000000' // Black
 export const DEFAULT_PEN_WIDTH: PenWidth = 2

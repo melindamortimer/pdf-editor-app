@@ -6,12 +6,12 @@ import type { Annotation, HighlightAnnotation, BoxAnnotation, TextAnnotation } f
 const defaultProps = {
   pageId: 'page-1',
   annotations: [] as Annotation[],
-  selectedAnnotationId: null as string | null,
+  selectedAnnotationIds: new Set<string>(),
   currentTool: 'select' as const,
   canvasWidth: 800,
   canvasHeight: 1000,
   zoom: 1,
-  highlightColor: 'yellow' as const,
+  highlightColor: '#ffeb3b',
   lineColor: '#ff0000',
   boxColor: '#ff0000',
   boxFillColor: 'transparent',
@@ -34,7 +34,7 @@ const createHighlight = (overrides = {}): HighlightAnnotation => ({
   y: 0.1,
   width: 0.2,
   height: 0.05,
-  color: 'yellow',
+  color: '#ffeb3b',
   ...overrides
 })
 
@@ -122,7 +122,7 @@ describe('AnnotationLayer', () => {
         <AnnotationLayer
           {...defaultProps}
           annotations={[highlight]}
-          selectedAnnotationId="selected-one"
+          selectedAnnotationIds={new Set(['selected-one'])}
         />
       )
 
@@ -175,7 +175,7 @@ describe('AnnotationLayer', () => {
       // Click inside the annotation (at x=120, y=150 which is within the annotation bounds)
       fireEvent.mouseDown(layer, { clientX: 120, clientY: 150, button: 0 })
 
-      expect(onSelectAnnotation).toHaveBeenCalledWith('box-1')
+      expect(onSelectAnnotation).toHaveBeenCalledWith('box-1', false)
     })
 
     it('clears selection when clicking empty area', () => {
@@ -219,7 +219,7 @@ describe('AnnotationLayer', () => {
       expect(onAddAnnotation).toHaveBeenCalled()
       const annotation = onAddAnnotation.mock.calls[0][0]
       expect(annotation.type).toBe('highlight')
-      expect(annotation.color).toBe('yellow')
+      expect(annotation.color).toBe('#ffeb3b')
     })
 
     it('uses selected highlight color', () => {
@@ -228,7 +228,7 @@ describe('AnnotationLayer', () => {
         <AnnotationLayer
           {...defaultProps}
           currentTool="highlight"
-          highlightColor="green"
+          highlightColor="#00ff00"
           onAddAnnotation={onAddAnnotation}
         />
       )
@@ -240,7 +240,7 @@ describe('AnnotationLayer', () => {
       fireEvent.mouseUp(layer)
 
       const annotation = onAddAnnotation.mock.calls[0][0]
-      expect(annotation.color).toBe('green')
+      expect(annotation.color).toBe('#00ff00')
     })
 
     it('does not create annotation for tiny drag', () => {
@@ -512,7 +512,7 @@ describe('AnnotationLayer', () => {
         <AnnotationLayer
           {...defaultProps}
           annotations={[box]}
-          selectedAnnotationId="selected-box"
+          selectedAnnotationIds={new Set(['selected-box'])}
           currentTool="select"
         />
       )

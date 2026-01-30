@@ -13,6 +13,10 @@ vi.mock('@services/pdfRenderer', () => ({
     canvas: document.createElement('canvas'),
     width: 100,
     height: 150
+  }),
+  getPageDimensions: vi.fn().mockResolvedValue({
+    width: 612,
+    height: 792
   })
 }))
 

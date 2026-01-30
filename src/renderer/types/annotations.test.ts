@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HIGHLIGHT_COLORS,
-  HIGHLIGHT_COLORS_TRANSPARENT,
   BOX_THICKNESS_PX,
   AVAILABLE_FONTS,
   DEFAULT_HIGHLIGHT_COLOR,
@@ -10,14 +8,18 @@ import {
   DEFAULT_BOX_THICKNESS,
   DEFAULT_LINE_COLOR,
   DEFAULT_BOX_COLOR,
-  LINE_COLORS,
-  LINE_COLOR_OPTIONS,
+  DEFAULT_BOX_FILL_COLOR,
+  DEFAULT_PEN_COLOR,
+  DEFAULT_PEN_WIDTH,
+  PEN_WIDTH_OPTIONS,
+  hexToHighlightRgba,
   type Annotation,
   type HighlightAnnotation,
   type UnderlineAnnotation,
   type StrikethroughAnnotation,
   type BoxAnnotation,
   type TextAnnotation,
+  type PenAnnotation,
   type AnnotationTool
 } from './annotations'
 
@@ -32,11 +34,11 @@ describe('Annotation Types', () => {
         y: 0.2,
         width: 0.3,
         height: 0.05,
-        color: 'yellow'
+        color: '#ffeb3b'
       }
 
       expect(highlight.type).toBe('highlight')
-      expect(highlight.color).toBe('yellow')
+      expect(highlight.color).toBe('#ffeb3b')
     })
   })
 
@@ -86,11 +88,13 @@ describe('Annotation Types', () => {
         width: 0.2,
         height: 0.2,
         color: '#00ff00',
+        fillColor: '#ffffff',
         thickness: 'medium'
       }
 
       expect(box.type).toBe('box')
       expect(box.thickness).toBe('medium')
+      expect(box.fillColor).toBe('#ffffff')
     })
   })
 
@@ -139,63 +143,51 @@ describe('Annotation Types', () => {
     })
   })
 
+  describe('PenAnnotation', () => {
+    it('has required properties', () => {
+      const pen: PenAnnotation = {
+        id: 'p1',
+        pageId: 'page-1',
+        type: 'pen',
+        x: 0.1,
+        y: 0.1,
+        width: 0.3,
+        height: 0.2,
+        points: [[0.1, 0.1], [0.2, 0.15], [0.3, 0.2]],
+        color: '#000000',
+        strokeWidth: 2
+      }
+
+      expect(pen.type).toBe('pen')
+      expect(pen.points).toHaveLength(3)
+      expect(pen.strokeWidth).toBe(2)
+    })
+  })
+
   describe('Annotation union type', () => {
     it('allows all annotation types', () => {
       const annotations: Annotation[] = [
-        { id: '1', pageId: 'p1', type: 'highlight', x: 0, y: 0, width: 0.1, height: 0.1, color: 'yellow' },
+        { id: '1', pageId: 'p1', type: 'highlight', x: 0, y: 0, width: 0.1, height: 0.1, color: '#ffeb3b' },
         { id: '2', pageId: 'p1', type: 'underline', x: 0, y: 0, width: 0.1, height: 0.01, color: '#f00' },
         { id: '3', pageId: 'p1', type: 'strikethrough', x: 0, y: 0, width: 0.1, height: 0.01, color: '#f00' },
-        { id: '4', pageId: 'p1', type: 'box', x: 0, y: 0, width: 0.1, height: 0.1, color: '#f00', thickness: 'thin' },
-        { id: '5', pageId: 'p1', type: 'text', x: 0, y: 0, width: 0.1, height: 0.05, content: 'Hi', font: 'Arial', fontSize: 12, color: '#000' }
+        { id: '4', pageId: 'p1', type: 'box', x: 0, y: 0, width: 0.1, height: 0.1, color: '#f00', fillColor: '#fff', thickness: 'thin' },
+        { id: '5', pageId: 'p1', type: 'text', x: 0, y: 0, width: 0.1, height: 0.05, content: 'Hi', font: 'Arial', fontSize: 12, color: '#000' },
+        { id: '6', pageId: 'p1', type: 'pen', x: 0, y: 0, width: 0.1, height: 0.1, points: [[0, 0]], color: '#000', strokeWidth: 2 }
       ]
 
-      expect(annotations).toHaveLength(5)
+      expect(annotations).toHaveLength(6)
     })
   })
 
   describe('AnnotationTool type', () => {
     it('includes all tools', () => {
-      const tools: AnnotationTool[] = ['select', 'highlight', 'underline', 'strikethrough', 'box', 'text', 'eraser', 'grab']
-      expect(tools).toHaveLength(8)
+      const tools: AnnotationTool[] = ['select', 'highlight', 'underline', 'strikethrough', 'box', 'pen', 'text', 'eraser', 'grab']
+      expect(tools).toHaveLength(9)
     })
   })
 })
 
 describe('Annotation Constants', () => {
-  describe('HIGHLIGHT_COLORS', () => {
-    it('has all highlight color options', () => {
-      expect(HIGHLIGHT_COLORS.yellow).toBeDefined()
-      expect(HIGHLIGHT_COLORS.green).toBeDefined()
-      expect(HIGHLIGHT_COLORS.pink).toBeDefined()
-      expect(HIGHLIGHT_COLORS.orange).toBeDefined()
-      expect(HIGHLIGHT_COLORS.clear).toBeDefined()
-    })
-
-    it('colors are vibrant (no alpha) for picker display', () => {
-      expect(HIGHLIGHT_COLORS.yellow).toContain('rgb(')
-      expect(HIGHLIGHT_COLORS.yellow).not.toContain('rgba')
-    })
-
-    it('clear is transparent', () => {
-      expect(HIGHLIGHT_COLORS.clear).toBe('transparent')
-    })
-  })
-
-  describe('HIGHLIGHT_COLORS_TRANSPARENT', () => {
-    it('has all highlight color options', () => {
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.yellow).toBeDefined()
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.green).toBeDefined()
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.pink).toBeDefined()
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.orange).toBeDefined()
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.clear).toBeDefined()
-    })
-
-    it('colors have alpha for transparency on PDF', () => {
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.yellow).toContain('rgba')
-      expect(HIGHLIGHT_COLORS_TRANSPARENT.yellow).toContain('0.4')
-    })
-  })
-
   describe('BOX_THICKNESS_PX', () => {
     it('has all thickness options', () => {
       expect(BOX_THICKNESS_PX.thin).toBe(1)
@@ -206,6 +198,12 @@ describe('Annotation Constants', () => {
     it('thickness increases correctly', () => {
       expect(BOX_THICKNESS_PX.thin).toBeLessThan(BOX_THICKNESS_PX.medium)
       expect(BOX_THICKNESS_PX.medium).toBeLessThan(BOX_THICKNESS_PX.thick)
+    })
+  })
+
+  describe('PEN_WIDTH_OPTIONS', () => {
+    it('has all width options', () => {
+      expect(PEN_WIDTH_OPTIONS).toEqual([1, 2, 4, 8])
     })
   })
 
@@ -228,30 +226,27 @@ describe('Annotation Constants', () => {
 
   describe('Defaults', () => {
     it('has sensible default values', () => {
-      expect(DEFAULT_HIGHLIGHT_COLOR).toBe('yellow')
+      expect(DEFAULT_HIGHLIGHT_COLOR).toBe('#ffeb3b') // Yellow hex
       expect(DEFAULT_TEXT_FONT).toBe('Arial')
       expect(DEFAULT_TEXT_SIZE).toBe(12)
       expect(DEFAULT_BOX_THICKNESS).toBe('medium')
       expect(DEFAULT_LINE_COLOR).toBe('#000000') // Black for underline
       expect(DEFAULT_BOX_COLOR).toBe('#ff0000') // Red for box
+      expect(DEFAULT_BOX_FILL_COLOR).toBe('transparent') // Transparent fill
+      expect(DEFAULT_PEN_COLOR).toBe('#000000') // Black for pen
+      expect(DEFAULT_PEN_WIDTH).toBe(2)
     })
   })
 
-  describe('LINE_COLORS', () => {
-    it('has all color options', () => {
-      expect(LINE_COLORS.black).toBe('#000000')
-      expect(LINE_COLORS.red).toBe('#ff0000')
-      expect(LINE_COLORS.blue).toBe('#0066cc')
-      expect(LINE_COLORS.clear).toBe('transparent')
+  describe('hexToHighlightRgba', () => {
+    it('converts hex to rgba with default alpha', () => {
+      const result = hexToHighlightRgba('#ffeb3b')
+      expect(result).toBe('rgba(255, 235, 59, 0.4)')
     })
 
-    it('has correct color options array (excludes clear)', () => {
-      expect(LINE_COLOR_OPTIONS).toEqual(['black', 'red', 'blue'])
-      expect(LINE_COLOR_OPTIONS).not.toContain('clear')
-    })
-
-    it('clear is transparent for eraser functionality', () => {
-      expect(LINE_COLORS.clear).toBe('transparent')
+    it('accepts custom alpha value', () => {
+      const result = hexToHighlightRgba('#ff0000', 0.5)
+      expect(result).toBe('rgba(255, 0, 0, 0.5)')
     })
   })
 })

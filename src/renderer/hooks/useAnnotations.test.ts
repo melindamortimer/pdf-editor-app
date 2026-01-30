@@ -10,9 +10,9 @@ describe('useAnnotations', () => {
       expect(result.current.annotations).toEqual([])
     })
 
-    it('starts with no selected annotation', () => {
+    it('starts with no selected annotations', () => {
       const { result } = renderHook(() => useAnnotations())
-      expect(result.current.selectedAnnotationId).toBeNull()
+      expect(result.current.selectedAnnotationIds.size).toBe(0)
     })
 
     it('starts with select tool active', () => {
@@ -22,7 +22,7 @@ describe('useAnnotations', () => {
 
     it('has default tool settings', () => {
       const { result } = renderHook(() => useAnnotations())
-      expect(result.current.toolSettings.highlightColor).toBe('yellow')
+      expect(result.current.toolSettings.highlightColor).toBe('#ffeb3b')
       expect(result.current.toolSettings.textFont).toBe('Arial')
       expect(result.current.toolSettings.textSize).toBe(12)
       expect(result.current.toolSettings.boxThickness).toBe('medium')
@@ -132,18 +132,18 @@ describe('useAnnotations', () => {
       act(() => {
         result.current.addAnnotation({
           id: 'ann-1', pageId: 'page-1', type: 'highlight',
-          x: 0.1, y: 0.2, width: 0.3, height: 0.05, color: 'yellow'
+          x: 0.1, y: 0.2, width: 0.3, height: 0.05, color: '#ffeb3b'
         })
         result.current.selectAnnotation('ann-1')
       })
 
-      expect(result.current.selectedAnnotationId).toBe('ann-1')
+      expect(result.current.selectedAnnotationIds.has('ann-1')).toBe(true)
 
       act(() => {
         result.current.deleteAnnotation('ann-1')
       })
 
-      expect(result.current.selectedAnnotationId).toBeNull()
+      expect(result.current.selectedAnnotationIds.size).toBe(0)
     })
 
     it('keeps selection if different annotation deleted', () => {
@@ -152,17 +152,17 @@ describe('useAnnotations', () => {
       act(() => {
         result.current.addAnnotation({
           id: 'ann-1', pageId: 'page-1', type: 'highlight',
-          x: 0.1, y: 0.2, width: 0.3, height: 0.05, color: 'yellow'
+          x: 0.1, y: 0.2, width: 0.3, height: 0.05, color: '#ffeb3b'
         })
         result.current.addAnnotation({
           id: 'ann-2', pageId: 'page-1', type: 'highlight',
-          x: 0.2, y: 0.3, width: 0.3, height: 0.05, color: 'green'
+          x: 0.2, y: 0.3, width: 0.3, height: 0.05, color: '#00ff00'
         })
         result.current.selectAnnotation('ann-1')
         result.current.deleteAnnotation('ann-2')
       })
 
-      expect(result.current.selectedAnnotationId).toBe('ann-1')
+      expect(result.current.selectedAnnotationIds.has('ann-1')).toBe(true)
     })
   })
 
@@ -174,7 +174,8 @@ describe('useAnnotations', () => {
         result.current.selectAnnotation('ann-1')
       })
 
-      expect(result.current.selectedAnnotationId).toBe('ann-1')
+      expect(result.current.selectedAnnotationIds.has('ann-1')).toBe(true)
+      expect(result.current.selectedAnnotationIds.size).toBe(1)
     })
 
     it('can clear selection with null', () => {
@@ -185,7 +186,7 @@ describe('useAnnotations', () => {
         result.current.selectAnnotation(null)
       })
 
-      expect(result.current.selectedAnnotationId).toBeNull()
+      expect(result.current.selectedAnnotationIds.size).toBe(0)
     })
   })
 
