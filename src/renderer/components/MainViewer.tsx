@@ -284,6 +284,8 @@ export default function MainViewer({
               width={canvasDimensions.width}
               height={canvasDimensions.height}
               scale={zoom}
+              currentTool={currentTool}
+              hasSelectedAnnotation={selectedAnnotationIds?.size > 0}
             />
           )}
           {hasContent && pageId && canvasDimensions.width > 0 && (

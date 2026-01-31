@@ -67,7 +67,11 @@ export default function ColorPicker({
 
   const handleColorChange = (newHex: string) => {
     setHexColor(newHex)
-    if (showAlpha && alpha < 1) {
+    // If alpha is 0 (transparent), picking a color should set opacity to 100%
+    if (showAlpha && alpha === 0) {
+      setAlpha(1)
+      onChange(newHex)
+    } else if (showAlpha && alpha < 1) {
       const rgb = hexToRgb(newHex)
       onChange(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`)
     } else {

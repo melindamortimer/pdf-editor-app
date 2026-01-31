@@ -81,7 +81,7 @@ export interface PdfLink {
 const URL_PATTERN = /(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/gi
 
 // Debug flag for link detection logging
-const DEBUG_LINKS = true
+const DEBUG_LINKS = false
 
 export async function getPageLinks(
   documentId: string,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getPageLinks, type PdfLink } from '../services/pdfRenderer'
+import type { AnnotationTool } from '../types/annotations'
 import './LinkLayer.css'
 
 interface LinkLayerProps {
@@ -8,6 +9,8 @@ interface LinkLayerProps {
   width: number
   height: number
   scale: number
+  currentTool: AnnotationTool
+  hasSelectedAnnotation: boolean
 }
 
 export default function LinkLayer({
@@ -15,7 +18,9 @@ export default function LinkLayer({
   pageIndex,
   width,
   height,
-  scale
+  scale,
+  currentTool,
+  hasSelectedAnnotation
 }: LinkLayerProps) {
   const [links, setLinks] = useState<PdfLink[]>([])
   const [modifierActive, setModifierActive] = useState(false)
@@ -69,32 +74,26 @@ export default function LinkLayer({
   }, [])
 
   const handleClick = (e: React.MouseEvent, url: string) => {
-    // Only open on cmd+click (Mac) or ctrl+click (Windows/Linux)
-    if (e.metaKey || e.ctrlKey) {
-      e.preventDefault()
-      e.stopPropagation()
+    // Always prevent default to stop <a> tag from navigating
+    e.preventDefault()
+    e.stopPropagation()
+
+    // Only open on cmd+click (Mac) or ctrl+click (Windows/Linux) with select tool
+    if ((e.metaKey || e.ctrlKey) && currentTool === 'select') {
       window.electronAPI.openExternalUrl(url)
     }
-    // Without modifier, let the click pass through - don't prevent default
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Without modifier, let mousedown pass through to layers below
-    if (!e.metaKey && !e.ctrlKey) {
-      // Don't stop propagation - let it reach AnnotationLayer
-      return
-    }
-    // With modifier, stop propagation to prevent annotation interactions
-    e.stopPropagation()
-  }
+  // Only show link layer for select tool with no annotation selected
+  const isSelectTool = currentTool === 'select' && !hasSelectedAnnotation
 
-  // Debug: console.log(`[LinkLayer] Rendering ${links.length} links, container size: ${width}x${height}`)
+  // Debug: console.log(`[LinkLayer] links=${links.length}, currentTool=${currentTool}, hasSelectedAnnotation=${hasSelectedAnnotation}, isSelectTool=${isSelectTool}`)
 
-  if (links.length === 0) return null
+  if (links.length === 0 || !isSelectTool) return null
 
   return (
     <div
-      className={`link-layer ${modifierActive ? 'modifier-active' : ''}`}
+      className={`link-layer select-tool ${modifierActive ? 'modifier-active' : ''}`}
       style={{ width, height }}
     >
       {links.map((link, index) => (
@@ -110,7 +109,6 @@ export default function LinkLayer({
             height: link.rect.height
           }}
           onClick={(e) => handleClick(e, link.url)}
-          onMouseDown={handleMouseDown}
         />
       ))}
     </div>

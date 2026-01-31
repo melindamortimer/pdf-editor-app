@@ -3,13 +3,13 @@
   top: 0;
   left: 0;
   pointer-events: none;
-  z-index: 15;
+  z-index: 25;
 }
 
 .pdf-link {
   position: absolute;
   display: block;
-  pointer-events: auto;
+  pointer-events: none;
   border-radius: 2px;
   transition: background-color 0.15s ease, outline 0.15s ease;
   text-decoration: none;
@@ -17,16 +17,23 @@
   /* Debug: outline: 1px dashed rgba(255, 0, 0, 0.5); */
 }
 
-.pdf-link:hover {
+/* With select tool, enable hover effects (but not clickable yet) */
+.link-layer.select-tool .pdf-link {
+  pointer-events: auto;
+  cursor: default;
+}
+
+.link-layer.select-tool .pdf-link:hover {
   background-color: rgba(0, 100, 255, 0.1);
+  outline: 1px solid rgba(0, 100, 255, 0.3);
 }
 
-/* Show hand cursor only when modifier key is held */
-.link-layer.modifier-active .pdf-link {
-  cursor: pointer !important;
+/* With modifier key held, make links clickable with stronger hover */
+.link-layer.select-tool.modifier-active .pdf-link {
+  cursor: pointer;
 }
 
-.link-layer.modifier-active .pdf-link:hover {
+.link-layer.select-tool.modifier-active .pdf-link:hover {
   background-color: rgba(0, 100, 255, 0.2);
   outline: 2px solid rgba(0, 100, 255, 0.5);
 }
