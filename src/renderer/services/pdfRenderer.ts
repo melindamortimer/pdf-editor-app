@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import jsQR from 'jsqr'
 
 // Set worker path
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -80,7 +81,7 @@ export interface PdfLink {
 const URL_PATTERN = /(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/gi
 
 // Debug flag for link detection logging
-const DEBUG_LINKS = false
+const DEBUG_LINKS = true
 
 export async function getPageLinks(
   documentId: string,
@@ -182,7 +183,113 @@ export async function getPageLinks(
     }
   }
 
+  // Scan for QR codes containing URLs
+  const qrLinks = await scanPageForQRCodes(documentId, pageIndex, scale, annotationUrls)
+  links.push(...qrLinks)
+
   if (DEBUG_LINKS) console.log(`[LinkLayer] Total links found: ${links.length}`)
+  return links
+}
+
+// URL pattern for validating QR code content - matches URLs with or without protocol
+const QR_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b/i
+
+/**
+ * Scan a PDF page for QR codes containing URLs
+ */
+async function scanPageForQRCodes(
+  documentId: string,
+  pageIndex: number,
+  scale: number,
+  existingUrls: Set<string>
+): Promise<PdfLink[]> {
+  const links: PdfLink[] = []
+
+  try {
+    // Render page to canvas for QR scanning
+    // Use higher scale for better QR detection (small QR codes need more resolution)
+    const scanScale = Math.max(scale, 2.5)
+    const { canvas, width, height } = await renderPage(documentId, pageIndex, scanScale)
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return links
+
+    const imageData = ctx.getImageData(0, 0, width, height)
+
+    if (DEBUG_LINKS) console.log(`[LinkLayer] Scanning for QR codes at ${width}x${height}...`)
+
+    // Scan for multiple QR codes by repeatedly scanning and blanking out found codes
+    const maxQRCodes = 10 // Safety limit
+    let foundCount = 0
+
+    while (foundCount < maxQRCodes) {
+      // Scan for QR code with inversion attempts for better detection
+      const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'attemptBoth'
+      })
+
+      if (!qrCode || !qrCode.data) {
+        if (DEBUG_LINKS) console.log(`[LinkLayer] No more QR codes found (total: ${foundCount})`)
+        break
+      }
+
+      foundCount++
+      if (DEBUG_LINKS) console.log(`[LinkLayer] jsQR found QR code #${foundCount} with data: "${qrCode.data}"`)
+
+      let url = qrCode.data
+
+      // Only process if it looks like a URL
+      if (QR_URL_PATTERN.test(url)) {
+        // Add protocol if missing
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          url = 'https://' + url
+        }
+
+        // Normalize for comparison
+        const normalizeUrl = (u: string) => u.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '')
+
+        // Skip if already found
+        if (!existingUrls.has(normalizeUrl(url))) {
+          // Calculate position in viewport coordinates
+          // QR code location is in scan canvas coordinates, need to scale to target viewport
+          const scaleRatio = scale / scanScale
+          const rect = {
+            x: qrCode.location.topLeftCorner.x * scaleRatio,
+            y: qrCode.location.topLeftCorner.y * scaleRatio,
+            width: (qrCode.location.topRightCorner.x - qrCode.location.topLeftCorner.x) * scaleRatio,
+            height: (qrCode.location.bottomLeftCorner.y - qrCode.location.topLeftCorner.y) * scaleRatio
+          }
+
+          if (DEBUG_LINKS) console.log(`[LinkLayer] Found QR code URL: "${url}" at`, rect)
+          links.push({ url, rect })
+          existingUrls.add(normalizeUrl(url))
+        }
+      } else if (DEBUG_LINKS) {
+        console.log(`[LinkLayer] QR code data "${qrCode.data}" does not look like a URL`)
+      }
+
+      // Blank out the found QR code region so we can find others
+      const loc = qrCode.location
+      const minX = Math.floor(Math.min(loc.topLeftCorner.x, loc.bottomLeftCorner.x)) - 10
+      const maxX = Math.ceil(Math.max(loc.topRightCorner.x, loc.bottomRightCorner.x)) + 10
+      const minY = Math.floor(Math.min(loc.topLeftCorner.y, loc.topRightCorner.y)) - 10
+      const maxY = Math.ceil(Math.max(loc.bottomLeftCorner.y, loc.bottomRightCorner.y)) + 10
+
+      // Fill the region with white pixels
+      for (let y = Math.max(0, minY); y < Math.min(height, maxY); y++) {
+        for (let x = Math.max(0, minX); x < Math.min(width, maxX); x++) {
+          const idx = (y * width + x) * 4
+          imageData.data[idx] = 255     // R
+          imageData.data[idx + 1] = 255 // G
+          imageData.data[idx + 2] = 255 // B
+          // Alpha stays the same
+        }
+      }
+    }
+  } catch (err) {
+    if (DEBUG_LINKS) console.error('[LinkLayer] Error scanning for QR codes:', err)
+  }
+
   return links
 }
 

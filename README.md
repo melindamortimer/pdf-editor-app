@@ -74,6 +74,7 @@ Built installers will be in the `release/` folder.
 - **React + TypeScript** - UI framework with type safety
 - **PDF.js** - Mozilla's PDF renderer for viewing
 - **pdf-lib** - Pure JS library for PDF manipulation (reorder, delete, duplicate, merge, add annotations)
+- **jsQR** - QR code detection for clickable QR code links
 - **@dnd-kit** - Drag-and-drop toolkit for page reordering
 - **Vite** - Build tooling for fast development
 - **Vitest** - Unit testing framework
@@ -104,6 +105,7 @@ Built installers will be in the `release/` folder.
 | **Strikethrough** | Horizontal line through text. Colors: black, red, blue. Clear option to erase. |
 | **Box** | Rectangle with customizable border color, fill color, and thickness (thin/medium/thick) |
 | **Text** | Placed text with font selection, size, color, and formatting (bold, italic, underline) |
+| **Pen** | Freehand drawing with customizable color and stroke width (1-10px) |
 | **Eraser** | Select text to erase all text annotations (highlights, underlines, strikethroughs) |
 
 **Text-based annotations** (highlight, underline, strikethrough):
@@ -124,6 +126,19 @@ Built installers will be in the `release/` folder.
 - Ctrl+B to toggle bold
 - Ctrl+I to toggle italic
 - Ctrl+U to toggle underline
+
+### Clickable Links
+
+The viewer automatically detects clickable links in PDFs:
+
+- **PDF link annotations** - Standard hyperlinks embedded in the PDF
+- **Text URLs** - URLs visible in the PDF text (e.g., "www.example.com")
+- **QR codes** - QR codes containing URLs are detected and made clickable
+
+**How to use:**
+- Hover over a link to see a highlight and tooltip with the URL
+- Hold **Ctrl** (or **Cmd** on Mac) and click to open the link in your default browser
+- Links only become clickable when the modifier key is held (prevents accidental navigation)
 
 ### Text Fonts (8 options)
 1. Arial - sans-serif, clean
@@ -251,6 +266,7 @@ Built installers will be in the `release/` folder.
 | Delete / Backspace | Delete selected page or annotation |
 | Escape | Deselect annotation |
 | S | Select tool |
+| P | Pen tool |
 | H | Highlight tool |
 | U | Underline tool |
 | K | Strikethrough tool |
@@ -272,6 +288,7 @@ Built installers will be in the `release/` folder.
 | Ctrl+B | Toggle bold (while editing text) |
 | Ctrl+I | Toggle italic (while editing text) |
 | Ctrl+U | Toggle underline (while editing text) |
+| Ctrl+Click | Open link in browser (on detected URLs/QR codes) |
 
 ## Undo/Redo
 
@@ -283,6 +300,7 @@ Standard undo stack behavior.
 
 ## Window Behavior
 
+- Window title displays the current document name (or "DocuMint PDF Editor" when no document is open)
 - Save button shows asterisk (*) when there are unsaved changes
 - First save to original file shows overwrite warning
 
@@ -301,10 +319,11 @@ src/
       MainViewer.tsx     # PDF canvas and layers
       AnnotationLayer.tsx # Annotation rendering and interaction
       TextLayer.tsx      # PDF text selection layer
+      LinkLayer.tsx      # Clickable URL links and QR codes
     hooks/
       useAnnotations.ts  # Annotation state and undo/redo
     services/
-      pdfRenderer.ts     # PDF.js wrapper for viewing
+      pdfRenderer.ts     # PDF.js wrapper for viewing, link/QR detection
       pdfManipulator.ts  # pdf-lib for save operations
     types/
       pdf.ts             # PDF document/page types
