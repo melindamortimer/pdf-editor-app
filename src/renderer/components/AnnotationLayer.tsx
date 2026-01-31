@@ -651,125 +651,159 @@ export default function AnnotationLayer({
     }
   }, [drawing, penDrawing, dragging, annotations, canvasWidth, canvasHeight, getMousePos, toNormalized, onUpdateAnnotation])
 
-  // Handle mouse up
+  // Handle mouse up - only handles dragging now; drawing/pen handled by document listener
   const handleMouseUp = useCallback(() => {
-    // Finish drawing
-    if (drawing?.isDrawing) {
-      const minX = Math.min(drawing.startX, drawing.currentX)
-      const minY = Math.min(drawing.startY, drawing.currentY)
-      const width = Math.abs(drawing.currentX - drawing.startX)
-      const height = Math.abs(drawing.currentY - drawing.startY)
-
-      // Only create annotation if it has some size
-      if (width > 5 && height > 2) {
-        const normalized = toNormalized(minX, minY)
-        const normalizedSize = {
-          width: width / canvasWidth,
-          height: height / canvasHeight
-        }
-
-        let annotation: Annotation | null = null
-
-        switch (currentTool) {
-          case 'highlight':
-            annotation = {
-              id: crypto.randomUUID(),
-              pageId,
-              type: 'highlight',
-              x: normalized.x,
-              y: normalized.y,
-              width: normalizedSize.width,
-              height: normalizedSize.height,
-              color: highlightColor
-            }
-            break
-          case 'underline':
-            annotation = {
-              id: crypto.randomUUID(),
-              pageId,
-              type: 'underline',
-              x: normalized.x,
-              y: normalized.y + normalizedSize.height, // Line at bottom
-              width: normalizedSize.width,
-              height: 0.003, // Thin line
-              color: lineColor
-            }
-            break
-          case 'strikethrough':
-            annotation = {
-              id: crypto.randomUUID(),
-              pageId,
-              type: 'strikethrough',
-              x: normalized.x,
-              y: normalized.y + normalizedSize.height / 2, // Line in middle
-              width: normalizedSize.width,
-              height: 0.003,
-              color: lineColor
-            }
-            break
-          case 'box':
-            annotation = {
-              id: crypto.randomUUID(),
-              pageId,
-              type: 'box',
-              x: normalized.x,
-              y: normalized.y,
-              width: normalizedSize.width,
-              height: normalizedSize.height,
-              color: boxColor,
-              fillColor: boxFillColor,
-              thickness: boxThickness
-            }
-            break
-        }
-
-        if (annotation) {
-          onAddAnnotation(annotation)
-          onSelectAnnotation(annotation.id)
-        }
-      }
-      setDrawing(null)
-    }
-
-    // Finish pen drawing
-    if (penDrawing && penDrawing.points.length > 1) {
-      // Calculate bounding box from points
-      const xs = penDrawing.points.map(p => p[0])
-      const ys = penDrawing.points.map(p => p[1])
-      const minX = Math.min(...xs)
-      const maxX = Math.max(...xs)
-      const minY = Math.min(...ys)
-      const maxY = Math.max(...ys)
-
-      const annotation: Annotation = {
-        id: crypto.randomUUID(),
-        pageId,
-        type: 'pen',
-        points: penDrawing.points,
-        color: penColor,
-        strokeWidth: penWidth,
-        x: minX,
-        y: minY,
-        width: Math.max(0.01, maxX - minX),
-        height: Math.max(0.01, maxY - minY)
-      }
-      onAddAnnotation(annotation)
-      // Don't auto-select pen - user can select it later if they want to edit
-    }
-    setPenDrawing(null)
-
     // Finish dragging
     if (dragging) {
       setDragging(null)
     }
-  }, [drawing, penDrawing, dragging, currentTool, pageId, canvasWidth, canvasHeight, toNormalized, highlightColor, lineColor, boxColor, boxFillColor, boxThickness, penColor, penWidth, onAddAnnotation, onSelectAnnotation])
+  }, [dragging])
 
-  // Handle mouse leave
+  // Handle mouse leave - only cancel dragging, not drawing (allow drawing outside bounds)
   const handleMouseLeave = useCallback(() => {
-    if (drawing) setDrawing(null)
-    if (penDrawing) setPenDrawing(null)
+    // Don't cancel drawing or penDrawing - allow them to continue outside the page
     if (dragging) setDragging(null)
-  }, [drawing, penDrawing, dragging])
+  }, [dragging])
+
+  // Document-level mouse tracking for drawing outside page bounds
+  useEffect(() => {
+    if (!drawing && !penDrawing) return
+
+    const getMousePosFromEvent = (e: MouseEvent): { x: number; y: number } => {
+      if (!layerRef.current) return { x: 0, y: 0 }
+      const rect = layerRef.current.getBoundingClientRect()
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      }
+    }
+
+    const handleDocumentMouseMove = (e: MouseEvent) => {
+      const pos = getMousePosFromEvent(e)
+
+      if (drawing?.isDrawing) {
+        setDrawing(prev => prev ? { ...prev, currentX: pos.x, currentY: pos.y } : null)
+      }
+
+      if (penDrawing) {
+        const normalized = toNormalized(pos.x, pos.y)
+        setPenDrawing(prev => prev ? { points: [...prev.points, [normalized.x, normalized.y]] } : null)
+      }
+    }
+
+    const handleDocumentMouseUp = () => {
+      // Finalize drawing
+      if (drawing?.isDrawing) {
+        const minX = Math.min(drawing.startX, drawing.currentX)
+        const minY = Math.min(drawing.startY, drawing.currentY)
+        const width = Math.abs(drawing.currentX - drawing.startX)
+        const height = Math.abs(drawing.currentY - drawing.startY)
+
+        // Only create annotation if it has some size
+        if (width > 5 && height > 2) {
+          const normalized = toNormalized(minX, minY)
+          const normalizedSize = {
+            width: width / canvasWidth,
+            height: height / canvasHeight
+          }
+
+          let annotation: Annotation | null = null
+
+          switch (currentTool) {
+            case 'highlight':
+              annotation = {
+                id: crypto.randomUUID(),
+                pageId,
+                type: 'highlight',
+                x: normalized.x,
+                y: normalized.y,
+                width: normalizedSize.width,
+                height: normalizedSize.height,
+                color: highlightColor
+              }
+              break
+            case 'underline':
+              annotation = {
+                id: crypto.randomUUID(),
+                pageId,
+                type: 'underline',
+                x: normalized.x,
+                y: normalized.y + normalizedSize.height, // Line at bottom
+                width: normalizedSize.width,
+                height: 0.003, // Thin line
+                color: lineColor
+              }
+              break
+            case 'strikethrough':
+              annotation = {
+                id: crypto.randomUUID(),
+                pageId,
+                type: 'strikethrough',
+                x: normalized.x,
+                y: normalized.y + normalizedSize.height / 2, // Line in middle
+                width: normalizedSize.width,
+                height: 0.003,
+                color: lineColor
+              }
+              break
+            case 'box':
+              annotation = {
+                id: crypto.randomUUID(),
+                pageId,
+                type: 'box',
+                x: normalized.x,
+                y: normalized.y,
+                width: normalizedSize.width,
+                height: normalizedSize.height,
+                color: boxColor,
+                fillColor: boxFillColor,
+                thickness: boxThickness
+              }
+              break
+          }
+
+          if (annotation) {
+            onAddAnnotation(annotation)
+            onSelectAnnotation(annotation.id)
+          }
+        }
+        setDrawing(null)
+      }
+
+      // Finalize pen drawing
+      if (penDrawing && penDrawing.points.length > 1) {
+        const xs = penDrawing.points.map(p => p[0])
+        const ys = penDrawing.points.map(p => p[1])
+        const minX = Math.min(...xs)
+        const maxX = Math.max(...xs)
+        const minY = Math.min(...ys)
+        const maxY = Math.max(...ys)
+
+        const annotation: Annotation = {
+          id: crypto.randomUUID(),
+          pageId,
+          type: 'pen',
+          points: penDrawing.points,
+          color: penColor,
+          strokeWidth: penWidth,
+          x: minX,
+          y: minY,
+          width: Math.max(0.01, maxX - minX),
+          height: Math.max(0.01, maxY - minY)
+        }
+        onAddAnnotation(annotation)
+      }
+      setPenDrawing(null)
+    }
+
+    document.addEventListener('mousemove', handleDocumentMouseMove)
+    document.addEventListener('mouseup', handleDocumentMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleDocumentMouseMove)
+      document.removeEventListener('mouseup', handleDocumentMouseUp)
+    }
+  }, [drawing, penDrawing, currentTool, pageId, canvasWidth, canvasHeight, toNormalized, highlightColor, lineColor, boxColor, boxFillColor, boxThickness, penColor, penWidth, onAddAnnotation, onSelectAnnotation])
 
   // Start editing a text annotation
   const startTextEdit = useCallback((annotation: Annotation) => {

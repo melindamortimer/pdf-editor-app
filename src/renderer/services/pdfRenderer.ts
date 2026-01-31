@@ -129,10 +129,41 @@ export async function getPageLinks(
   // Only scan text content for URLs NOT already found as annotations
   const textContent = await page.getTextContent()
 
+  // Easter egg: "Hivin" links to Sunkern
+  const EASTER_EGG_URL = 'https://pokemondb.net/pokedex/sunkern'
+
   for (const item of textContent.items) {
     if (!('str' in item) || !item.str) continue
 
     const text = item.str as string
+
+    // Easter egg: Check for "Hivin" text
+    const hivinMatch = text.match(/\bHivin\b/i)
+    if (hivinMatch && !annotationUrls.has(normalizeUrl(EASTER_EGG_URL))) {
+      const tx = (item as any).transform
+      if (tx) {
+        const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1])
+        const x = tx[4]
+        const y = tx[5]
+        const charWidth = (item as any).width / text.length
+        const startX = x + (hivinMatch.index || 0) * charWidth
+        const matchWidth = hivinMatch[0].length * charWidth
+
+        const [vx1, vy1] = viewport.convertToViewportPoint(startX, y)
+        const [vx2, vy2] = viewport.convertToViewportPoint(startX + matchWidth, y + fontSize)
+
+        const rect = {
+          x: Math.min(vx1, vx2),
+          y: Math.min(vy1, vy2),
+          width: Math.abs(vx2 - vx1),
+          height: Math.abs(vy2 - vy1)
+        }
+        if (DEBUG_LINKS) console.log(`[LinkLayer] Easter egg: "Hivin" -> Sunkern at`, rect)
+        links.push({ url: EASTER_EGG_URL, rect })
+        annotationUrls.add(normalizeUrl(EASTER_EGG_URL))
+      }
+    }
+
     const matches = text.matchAll(URL_PATTERN)
 
     for (const match of matches) {
