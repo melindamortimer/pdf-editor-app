@@ -621,21 +621,82 @@ export default function AnnotationLayer({
       setPenDrawing(prev => prev ? { points: [...prev.points, [normalized.x, normalized.y]] } : null)
     }
 
-    // Handle dragging multiple annotations
+    // Handle dragging multiple annotations (in-bounds only, document listener handles out-of-bounds)
     if (dragging) {
+      updateDraggedAnnotations(pos)
+    }
+  }, [drawing, penDrawing, dragging, getMousePos, toNormalized])
+
+  // Helper to update dragged annotations position
+  const updateDraggedAnnotations = useCallback((pos: { x: number; y: number }) => {
+    if (!dragging) return
+
+    const deltaX = (pos.x - dragging.startX) / canvasWidth
+    const deltaY = (pos.y - dragging.startY) / canvasHeight
+
+    // Update each dragged annotation (no clamping - allow out of bounds)
+    dragging.ids.forEach(id => {
+      const ann = annotations.find(a => a.id === id)
+      const initialPos = dragging.initialPositions.get(id)
+      if (!ann || !initialPos) return
+
+      const newX = initialPos.x + deltaX
+      const newY = initialPos.y + deltaY
+
+      // For pen annotations, also update all points
+      if (ann.type === 'pen') {
+        const actualDeltaX = newX - ann.x
+        const actualDeltaY = newY - ann.y
+        const newPoints = ann.points.map(([px, py]): [number, number] => [
+          px + actualDeltaX,
+          py + actualDeltaY
+        ])
+        onUpdateAnnotation(id, { x: newX, y: newY, points: newPoints })
+      } else {
+        onUpdateAnnotation(id, { x: newX, y: newY })
+      }
+    })
+  }, [dragging, annotations, canvasWidth, canvasHeight, onUpdateAnnotation])
+
+  // Handle mouse up - only handles dragging now; drawing/pen handled by document listener
+  const handleMouseUp = useCallback(() => {
+    // Finish dragging
+    if (dragging) {
+      setDragging(null)
+    }
+  }, [dragging])
+
+  // Handle mouse leave - don't cancel anything, allow drawing/dragging outside bounds
+  const handleMouseLeave = useCallback(() => {
+    // Don't cancel drawing, penDrawing, or dragging - allow them to continue outside the page
+  }, [])
+
+  // Document-level mouse tracking for dragging outside page bounds
+  useEffect(() => {
+    if (!dragging) return
+
+    const getMousePosFromEvent = (e: MouseEvent): { x: number; y: number } => {
+      if (!layerRef.current) return { x: 0, y: 0 }
+      const rect = layerRef.current.getBoundingClientRect()
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      }
+    }
+
+    const handleDocumentMouseMove = (e: MouseEvent) => {
+      const pos = getMousePosFromEvent(e)
       const deltaX = (pos.x - dragging.startX) / canvasWidth
       const deltaY = (pos.y - dragging.startY) / canvasHeight
 
-      // Update each dragged annotation
       dragging.ids.forEach(id => {
         const ann = annotations.find(a => a.id === id)
         const initialPos = dragging.initialPositions.get(id)
         if (!ann || !initialPos) return
 
-        const newX = Math.max(0, Math.min(1, initialPos.x + deltaX))
-        const newY = Math.max(0, Math.min(1, initialPos.y + deltaY))
+        const newX = initialPos.x + deltaX
+        const newY = initialPos.y + deltaY
 
-        // For pen annotations, also update all points
         if (ann.type === 'pen') {
           const actualDeltaX = newX - ann.x
           const actualDeltaY = newY - ann.y
@@ -649,21 +710,19 @@ export default function AnnotationLayer({
         }
       })
     }
-  }, [drawing, penDrawing, dragging, annotations, canvasWidth, canvasHeight, getMousePos, toNormalized, onUpdateAnnotation])
 
-  // Handle mouse up - only handles dragging now; drawing/pen handled by document listener
-  const handleMouseUp = useCallback(() => {
-    // Finish dragging
-    if (dragging) {
+    const handleDocumentMouseUp = () => {
       setDragging(null)
     }
-  }, [dragging])
 
-  // Handle mouse leave - only cancel dragging, not drawing (allow drawing outside bounds)
-  const handleMouseLeave = useCallback(() => {
-    // Don't cancel drawing or penDrawing - allow them to continue outside the page
-    if (dragging) setDragging(null)
-  }, [dragging])
+    document.addEventListener('mousemove', handleDocumentMouseMove)
+    document.addEventListener('mouseup', handleDocumentMouseUp)
+
+    return () => {
+      document.removeEventListener('mousemove', handleDocumentMouseMove)
+      document.removeEventListener('mouseup', handleDocumentMouseUp)
+    }
+  }, [dragging, annotations, canvasWidth, canvasHeight, onUpdateAnnotation])
 
   // Document-level mouse tracking for drawing outside page bounds
   useEffect(() => {
