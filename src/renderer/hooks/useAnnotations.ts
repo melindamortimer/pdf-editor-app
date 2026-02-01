@@ -49,6 +49,11 @@ export interface UseAnnotationsReturn {
   undo: () => void
   redo: () => void
   discardAllAnnotations: () => void
+  // Layer ordering
+  bringToFront: (id: string) => void
+  sendToBack: (id: string) => void
+  bringForward: (id: string) => void
+  sendBackward: (id: string) => void
 }
 
 const MAX_HISTORY = 50 // Limit history to prevent memory issues
@@ -175,6 +180,61 @@ export function useAnnotations(): UseAnnotationsReturn {
     setSelectedAnnotationIds(new Set())
   }, [annotations, pushToHistory])
 
+  // Layer ordering functions
+  const bringToFront = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const index = prev.findIndex(ann => ann.id === id)
+      if (index === -1 || index === prev.length - 1) return prev
+      pushToHistory(prev)
+      const annotation = prev[index]
+      const newAnnotations = [...prev]
+      newAnnotations.splice(index, 1)
+      newAnnotations.push(annotation)
+      return newAnnotations
+    })
+  }, [pushToHistory])
+
+  const sendToBack = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const index = prev.findIndex(ann => ann.id === id)
+      if (index === -1 || index === 0) return prev
+      pushToHistory(prev)
+      const annotation = prev[index]
+      const newAnnotations = [...prev]
+      newAnnotations.splice(index, 1)
+      newAnnotations.unshift(annotation)
+      return newAnnotations
+    })
+  }, [pushToHistory])
+
+  const bringForward = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const index = prev.findIndex(ann => ann.id === id)
+      if (index === -1 || index === prev.length - 1) return prev
+      pushToHistory(prev)
+      const newAnnotations = [...prev]
+      // Swap with next annotation
+      const temp = newAnnotations[index]
+      newAnnotations[index] = newAnnotations[index + 1]
+      newAnnotations[index + 1] = temp
+      return newAnnotations
+    })
+  }, [pushToHistory])
+
+  const sendBackward = useCallback((id: string) => {
+    setAnnotations(prev => {
+      const index = prev.findIndex(ann => ann.id === id)
+      if (index === -1 || index === 0) return prev
+      pushToHistory(prev)
+      const newAnnotations = [...prev]
+      // Swap with previous annotation
+      const temp = newAnnotations[index]
+      newAnnotations[index] = newAnnotations[index - 1]
+      newAnnotations[index - 1] = temp
+      return newAnnotations
+    })
+  }, [pushToHistory])
+
   const canUndo = history.length > 0
   const canRedo = future.length > 0
 
@@ -211,6 +271,10 @@ export function useAnnotations(): UseAnnotationsReturn {
     getAnnotationsForPage,
     undo,
     redo,
-    discardAllAnnotations
+    discardAllAnnotations,
+    bringToFront,
+    sendToBack,
+    bringForward,
+    sendBackward
   }
 }

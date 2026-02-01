@@ -31,6 +31,11 @@ interface MainViewerProps {
   onSelectAnnotation: (id: string | null) => void
   onToolChange: (tool: AnnotationTool) => void
   onZoomChange: (zoom: number) => void
+  // Layer ordering
+  onBringToFront: (id: string) => void
+  onSendToBack: (id: string) => void
+  onBringForward: (id: string) => void
+  onSendBackward: (id: string) => void
 }
 
 export default function MainViewer({
@@ -56,7 +61,11 @@ export default function MainViewer({
   onDeleteAnnotation,
   onSelectAnnotation,
   onToolChange,
-  onZoomChange
+  onZoomChange,
+  onBringToFront,
+  onSendToBack,
+  onBringForward,
+  onSendBackward
 }: MainViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -273,7 +282,7 @@ export default function MainViewer({
             position: 'relative',
             display: 'inline-block',
             cursor: currentTool === 'eraser'
-              ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 4 20, crosshair`
+              ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21'/%3E%3Cpath d='M22 21H7'/%3E%3Cpath d='m5 11 9 9'/%3E%3C/svg%3E") 2 12, crosshair`
               : undefined
           }}
         >
@@ -334,6 +343,10 @@ export default function MainViewer({
               onDeleteAnnotation={onDeleteAnnotation}
               onSelectAnnotation={onSelectAnnotation}
               onToolChange={onToolChange}
+              onBringToFront={onBringToFront}
+              onSendToBack={onSendToBack}
+              onBringForward={onBringForward}
+              onSendBackward={onSendBackward}
             />
           )}
         </div>

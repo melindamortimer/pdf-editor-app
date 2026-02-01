@@ -77,11 +77,15 @@ async function bakeAnnotationsOntoPage(
 ): Promise<void> {
   const { width: pageWidth, height: pageHeight } = page.getSize()
 
-  // Sort annotations by render order: highlights first, then lines, pen, boxes, text on top
-  const sortedAnnotations = [...annotations].sort((a, b) => {
-    const order: Record<string, number> = { highlight: 0, underline: 1, strikethrough: 1, pen: 2, box: 3, text: 4 }
-    return (order[a.type] || 0) - (order[b.type] || 0)
-  })
+  // Text markings (highlight/underline/strikethrough) always render first (behind other annotations)
+  // Other annotations (pen, box, text) preserve their array order (user's layer ordering)
+  const textMarkings = annotations.filter(a =>
+    a.type === 'highlight' || a.type === 'underline' || a.type === 'strikethrough'
+  )
+  const otherAnnotations = annotations.filter(a =>
+    a.type !== 'highlight' && a.type !== 'underline' && a.type !== 'strikethrough'
+  )
+  const sortedAnnotations = [...textMarkings, ...otherAnnotations]
 
   for (const annotation of sortedAnnotations) {
     // Convert normalized coordinates to PDF points

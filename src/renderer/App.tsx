@@ -55,8 +55,21 @@ export default function App() {
     getAnnotationsForPage,
     undo,
     redo,
-    discardAllAnnotations
+    discardAllAnnotations,
+    bringToFront,
+    sendToBack,
+    bringForward,
+    sendBackward
   } = useAnnotations()
+
+  // Wrapped setCurrentTool that clears selection when switching to drawing tools
+  const handleToolChange = useCallback((tool: typeof currentTool) => {
+    // Clear selection when switching to tools other than select or box
+    if (tool !== 'select' && tool !== 'box') {
+      selectAnnotation(null)
+    }
+    setCurrentTool(tool)
+  }, [selectAnnotation, setCurrentTool])
 
   // Load a single PDF file and return its document/pages data
   const loadPdfFile = useCallback(async (filePath: string): Promise<{ doc: PdfDocument; pages: PdfPage[] }> => {
@@ -371,6 +384,31 @@ export default function App() {
     deleteAnnotation(id)
   }, [deleteAnnotation])
 
+  // Wrapped layer ordering functions
+  const wrappedBringToFront = useCallback((id: string) => {
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
+    bringToFront(id)
+  }, [bringToFront])
+
+  const wrappedSendToBack = useCallback((id: string) => {
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
+    sendToBack(id)
+  }, [sendToBack])
+
+  const wrappedBringForward = useCallback((id: string) => {
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
+    bringForward(id)
+  }, [bringForward])
+
+  const wrappedSendBackward = useCallback((id: string) => {
+    setHistoryStack(prev => [...prev, { type: 'annotations' }])
+    setFutureStack([])
+    sendBackward(id)
+  }, [sendBackward])
+
   // Unified undo - checks history stack to determine what to undo
   const unifiedUndo = useCallback(() => {
     if (historyStack.length === 0) return
@@ -595,35 +633,35 @@ export default function App() {
         switch (e.key.toLowerCase()) {
           case 's':
             e.preventDefault()
-            setCurrentTool('select')
+            handleToolChange('select')
             return
           case 'h':
             e.preventDefault()
-            setCurrentTool('highlight')
+            handleToolChange('highlight')
             return
           case 'u':
             e.preventDefault()
-            setCurrentTool('underline')
+            handleToolChange('underline')
             return
           case 'k':
             e.preventDefault()
-            setCurrentTool('strikethrough')
+            handleToolChange('strikethrough')
             return
           case 'b':
             e.preventDefault()
-            setCurrentTool('box')
+            handleToolChange('box')
             return
           case 'p':
             e.preventDefault()
-            setCurrentTool('pen')
+            handleToolChange('pen')
             return
           case 't':
             e.preventDefault()
-            setCurrentTool('text')
+            handleToolChange('text')
             return
           case 'e':
             e.preventDefault()
-            setCurrentTool('eraser')
+            handleToolChange('eraser')
             return
         }
       }
@@ -631,7 +669,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationIds, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation, setCurrentTool])
+  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationIds, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation, handleToolChange])
 
   // Ctrl+Mouse Wheel zoom
   useEffect(() => {
@@ -791,7 +829,7 @@ export default function App() {
         onSave={handleSave}
         onSaveAs={handleSaveAs}
         onZoomChange={setZoom}
-        onToolChange={setCurrentTool}
+        onToolChange={handleToolChange}
         onHighlightColorChange={(color) => updateToolSettings({ highlightColor: color })}
         onLineColorChange={(color) => updateToolSettings({ lineColor: color })}
         onBoxColorChange={handleBoxColorChange}
@@ -839,8 +877,12 @@ export default function App() {
           onUpdateAnnotation={wrappedUpdateAnnotation}
           onDeleteAnnotation={wrappedDeleteAnnotation}
           onSelectAnnotation={selectAnnotation}
-          onToolChange={setCurrentTool}
+          onToolChange={handleToolChange}
           onZoomChange={setZoom}
+          onBringToFront={wrappedBringToFront}
+          onSendToBack={wrappedSendToBack}
+          onBringForward={wrappedBringForward}
+          onSendBackward={wrappedSendBackward}
         />
       </div>
     </div>

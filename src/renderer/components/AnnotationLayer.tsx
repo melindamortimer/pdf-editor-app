@@ -37,6 +37,11 @@ interface AnnotationLayerProps {
   onDeleteAnnotation: (id: string) => void
   onSelectAnnotation: (id: string | null, addToSelection?: boolean) => void
   onToolChange: (tool: AnnotationTool) => void
+  // Layer ordering
+  onBringToFront: (id: string) => void
+  onSendToBack: (id: string) => void
+  onBringForward: (id: string) => void
+  onSendBackward: (id: string) => void
 }
 
 interface DrawingState {
@@ -69,7 +74,11 @@ export default function AnnotationLayer({
   onUpdateAnnotation,
   onDeleteAnnotation,
   onSelectAnnotation,
-  onToolChange
+  onToolChange,
+  onBringToFront,
+  onSendToBack,
+  onBringForward,
+  onSendBackward
 }: AnnotationLayerProps) {
   const layerRef = useRef<HTMLDivElement>(null)
   const [drawing, setDrawing] = useState<DrawingState | null>(null)
@@ -107,6 +116,13 @@ export default function AnnotationLayer({
     startWidth: number
     startHeight: number
     aspectRatio: number
+  } | null>(null)
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    annotationId: string
   } | null>(null)
 
   // Clear pending annotation once it appears in the annotations array
@@ -417,18 +433,24 @@ export default function AnnotationLayer({
 
   // Find annotation at position, optionally filtered by type
   // excludeTextMarkings: exclude highlight/underline/strikethrough (they can't be selected)
+  // Returns the topmost (visually front) annotation - searches from end of array
   const findAnnotationAt = useCallback((
     pos: { x: number; y: number },
     typeFilter?: Annotation['type'],
     excludeTextMarkings = false
   ): Annotation | undefined => {
-    return annotations.find(ann => {
-      if (typeFilter && ann.type !== typeFilter) return false
+    // Search from end (topmost) to start (bottom)
+    for (let i = annotations.length - 1; i >= 0; i--) {
+      const ann = annotations[i]
+      if (typeFilter && ann.type !== typeFilter) continue
       if (excludeTextMarkings && (ann.type === 'highlight' || ann.type === 'underline' || ann.type === 'strikethrough')) {
-        return false
+        continue
       }
-      return hitTestAnnotation(pos, ann)
-    })
+      if (hitTestAnnotation(pos, ann)) {
+        return ann
+      }
+    }
+    return undefined
   }, [annotations, hitTestAnnotation])
 
   // Handle mouse down
@@ -972,6 +994,84 @@ export default function AnnotationLayer({
     }
   }, [currentTool, getMousePos, findAnnotationAt, startTextEdit, onToolChange])
 
+  // Handle right-click context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    const pos = getMousePos(e)
+    const clickedAnnotation = findAnnotationAt(pos, undefined, true)
+
+    if (clickedAnnotation && selectedAnnotationIds.has(clickedAnnotation.id)) {
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        annotationId: clickedAnnotation.id
+      })
+    } else if (clickedAnnotation) {
+      // Select it first, then show menu
+      onSelectAnnotation(clickedAnnotation.id)
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        annotationId: clickedAnnotation.id
+      })
+    } else {
+      setContextMenu(null)
+    }
+  }, [getMousePos, findAnnotationAt, selectedAnnotationIds, onSelectAnnotation])
+
+  // Close context menu on click outside or Escape
+  useEffect(() => {
+    if (!contextMenu) return
+
+    const handleClick = () => setContextMenu(null)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null)
+    }
+
+    document.addEventListener('click', handleClick)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('click', handleClick)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [contextMenu])
+
+  // Keyboard shortcuts for layer ordering (when annotation is selected)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if an annotation is selected and not editing text
+      if (selectedAnnotationIds.size !== 1 || editingTextId) return
+      // Don't handle if typing in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      const selectedId = [...selectedAnnotationIds][0]
+
+      // Ctrl/Cmd + Shift + ] = Bring to Front
+      // Ctrl/Cmd + Shift + [ = Send to Back
+      // Ctrl/Cmd + ] = Bring Forward
+      // Ctrl/Cmd + [ = Send Backward
+      if (e.ctrlKey || e.metaKey) {
+        if (e.shiftKey && e.key === ']') {
+          e.preventDefault()
+          onBringToFront(selectedId)
+        } else if (e.shiftKey && e.key === '[') {
+          e.preventDefault()
+          onSendToBack(selectedId)
+        } else if (e.key === ']') {
+          e.preventDefault()
+          onBringForward(selectedId)
+        } else if (e.key === '[') {
+          e.preventDefault()
+          onSendBackward(selectedId)
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectedAnnotationIds, editingTextId, onBringToFront, onSendToBack, onBringForward, onSendBackward])
+
   // Render a single annotation
   const renderAnnotation = (annotation: Annotation) => {
     const pos = toPixels(annotation.x, annotation.y)
@@ -1338,12 +1438,39 @@ export default function AnnotationLayer({
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
     >
       {annotations.map(renderAnnotation)}
       {/* Render pending text annotation while waiting for parent state update */}
       {pendingTextAnnotation && !annotations.some(a => a.id === pendingTextAnnotation.id) && renderAnnotation(pendingTextAnnotation)}
       {renderDrawingPreview()}
       {renderPenPreview()}
+
+      {/* Context menu for layer ordering */}
+      {contextMenu && (
+        <div
+          className="annotation-context-menu"
+          style={{
+            position: 'fixed',
+            left: contextMenu.x,
+            top: contextMenu.y
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button onClick={() => { onBringToFront(contextMenu.annotationId); setContextMenu(null) }}>
+            Bring to Front <span className="shortcut">Ctrl+Shift+]</span>
+          </button>
+          <button onClick={() => { onBringForward(contextMenu.annotationId); setContextMenu(null) }}>
+            Bring Forward <span className="shortcut">Ctrl+]</span>
+          </button>
+          <button onClick={() => { onSendBackward(contextMenu.annotationId); setContextMenu(null) }}>
+            Send Backward <span className="shortcut">Ctrl+[</span>
+          </button>
+          <button onClick={() => { onSendToBack(contextMenu.annotationId); setContextMenu(null) }}>
+            Send to Back <span className="shortcut">Ctrl+Shift+[</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

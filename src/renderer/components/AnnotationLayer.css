@@ -117,3 +117,42 @@
   background: transparent;
   border-radius: 2px;
 }
+
+/* Context menu for layer ordering */
+.annotation-context-menu {
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 4px 0;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  min-width: 180px;
+}
+
+.annotation-context-menu button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.annotation-context-menu button:hover {
+  background: #0066cc;
+}
+
+.annotation-context-menu .shortcut {
+  color: #888;
+  font-size: 11px;
+  margin-left: 16px;
+}
+
+.annotation-context-menu button:hover .shortcut {
+  color: #ccc;
+}
