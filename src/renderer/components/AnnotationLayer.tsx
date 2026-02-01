@@ -237,15 +237,8 @@ export default function AnnotationLayer({
       let newWidth = Math.max(20, boxResizing.startWidth + deltaX)
       let newHeight = Math.max(20, boxResizing.startHeight + deltaY)
 
-      // Check if resizing an image
-      const resizingAnnotation = annotations.find(a => a.id === boxResizing.id)
-      const isImage = resizingAnnotation?.type === 'image'
-
-      // For images: always maintain aspect ratio UNLESS shift is held
-      // For boxes: maintain aspect ratio only IF shift is held
-      const shouldMaintainAspect = isImage ? !e.shiftKey : e.shiftKey
-
-      if (shouldMaintainAspect) {
+      // Hold shift to maintain aspect ratio (for both boxes and images)
+      if (e.shiftKey) {
         // Use the larger delta to determine size, maintain aspect ratio
         const widthRatio = newWidth / boxResizing.startWidth
         const heightRatio = newHeight / boxResizing.startHeight
