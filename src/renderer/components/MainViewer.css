@@ -8,8 +8,7 @@
 
 .main-viewer.grab-mode {
   cursor: grab;
-  /* Prevent scroll while in grab mode */
-  overflow: hidden;
+  /* Keep overflow:auto to preserve scroll position - wheel scrolling prevented via JS */
 }
 
 .main-viewer.grab-mode * {

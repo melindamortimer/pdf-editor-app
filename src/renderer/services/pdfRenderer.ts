@@ -77,11 +77,21 @@ export interface PdfLink {
   rect: { x: number; y: number; width: number; height: number }
 }
 
+// Internal interface for cached links with normalized coordinates
+interface CachedLink {
+  url: string
+  // Normalized rect (0-1 relative to page at scale 1.0)
+  normalizedRect: { x: number; y: number; width: number; height: number }
+}
+
 // URL pattern to match URLs in text (with or without protocol)
 const URL_PATTERN = /(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/gi
 
 // Debug flag for link detection logging
 const DEBUG_LINKS = false
+
+// Cache for link detection results - keyed by "documentId-pageIndex"
+const linkCache = new Map<string, CachedLink[]>()
 
 export async function getPageLinks(
   documentId: string,
@@ -91,11 +101,31 @@ export async function getPageLinks(
   const pdf = documentCache.get(documentId)
   if (!pdf) throw new Error(`Document ${documentId} not loaded`)
 
+  const cacheKey = `${documentId}-${pageIndex}`
+
+  // Check cache first - if we have cached links, just scale them
+  if (linkCache.has(cacheKey)) {
+    const cachedLinks = linkCache.get(cacheKey)!
+    if (DEBUG_LINKS) console.log(`[LinkLayer] Using cached links for page ${pageIndex}, scaling to ${scale}`)
+    return cachedLinks.map(link => ({
+      url: link.url,
+      rect: {
+        x: link.normalizedRect.x * scale,
+        y: link.normalizedRect.y * scale,
+        width: link.normalizedRect.width * scale,
+        height: link.normalizedRect.height * scale
+      }
+    }))
+  }
+
+  if (DEBUG_LINKS) console.log(`[LinkLayer] Detecting links for page ${pageIndex} (will cache)`)
+
+  // Detect links at scale 1.0 for caching
   const page = await pdf.getPage(pageIndex + 1)
-  const viewport = page.getViewport({ scale })
+  const viewport = page.getViewport({ scale: 1.0 })
   const annotations = await page.getAnnotations()
 
-  const links: PdfLink[] = []
+  const cachedLinks: CachedLink[] = []
 
   // Get link annotations from PDF structure
   if (DEBUG_LINKS) console.log(`[LinkLayer] Checking ${annotations.length} annotations`)
@@ -105,26 +135,26 @@ export async function getPageLinks(
       // annotation.rect is [x1, y1, x2, y2] in PDF coordinates (bottom-left origin)
       const [x1, y1, x2, y2] = annotation.rect
 
-      // Transform to viewport coordinates (top-left origin)
+      // Transform to viewport coordinates at scale 1.0 (top-left origin)
       const [vx1, vy1] = viewport.convertToViewportPoint(x1, y1)
       const [vx2, vy2] = viewport.convertToViewportPoint(x2, y2)
 
-      const rect = {
+      const normalizedRect = {
         x: Math.min(vx1, vx2),
         y: Math.min(vy1, vy2),
         width: Math.abs(vx2 - vx1),
         height: Math.abs(vy2 - vy1)
       }
-      if (DEBUG_LINKS) console.log(`[LinkLayer] Annotation link: "${annotation.url}" at`, rect)
-      links.push({ url: annotation.url, rect })
+      if (DEBUG_LINKS) console.log(`[LinkLayer] Annotation link: "${annotation.url}" at`, normalizedRect)
+      cachedLinks.push({ url: annotation.url, normalizedRect })
     }
   }
 
   // Track URLs already found from annotations (these have accurate positions)
   // Normalize URLs for comparison: remove protocol and trailing slashes
   const normalizeUrl = (url: string) => url.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '')
-  const annotationUrls = new Set(links.map(l => normalizeUrl(l.url)))
-  if (DEBUG_LINKS) console.log(`[LinkLayer] Found ${links.length} annotation links, normalized URLs:`, [...annotationUrls])
+  const annotationUrls = new Set(cachedLinks.map(l => normalizeUrl(l.url)))
+  if (DEBUG_LINKS) console.log(`[LinkLayer] Found ${cachedLinks.length} annotation links, normalized URLs:`, [...annotationUrls])
 
   // Only scan text content for URLs NOT already found as annotations
   const textContent = await page.getTextContent()
@@ -152,14 +182,14 @@ export async function getPageLinks(
         const [vx1, vy1] = viewport.convertToViewportPoint(startX, y)
         const [vx2, vy2] = viewport.convertToViewportPoint(startX + matchWidth, y + fontSize)
 
-        const rect = {
+        const normalizedRect = {
           x: Math.min(vx1, vx2),
           y: Math.min(vy1, vy2),
           width: Math.abs(vx2 - vx1),
           height: Math.abs(vy2 - vy1)
         }
-        if (DEBUG_LINKS) console.log(`[LinkLayer] Easter egg: "Hivin" -> Sunkern at`, rect)
-        links.push({ url: EASTER_EGG_URL, rect })
+        if (DEBUG_LINKS) console.log(`[LinkLayer] Easter egg: "Hivin" -> Sunkern at`, normalizedRect)
+        cachedLinks.push({ url: EASTER_EGG_URL, normalizedRect })
         annotationUrls.add(normalizeUrl(EASTER_EGG_URL))
       }
     }
@@ -197,29 +227,41 @@ export async function getPageLinks(
       const startX = x + (match.index || 0) * charWidth
       const matchWidth = match[0].length * charWidth
 
-      // Convert to viewport coordinates
+      // Convert to viewport coordinates at scale 1.0
       // In PDF coords, y increases upward, so top of text is y + fontSize
       const [vx1, vy1] = viewport.convertToViewportPoint(startX, y)
       const [vx2, vy2] = viewport.convertToViewportPoint(startX + matchWidth, y + fontSize)
 
-      const rect = {
+      const normalizedRect = {
         x: Math.min(vx1, vx2),
         y: Math.min(vy1, vy2),
         width: Math.abs(vx2 - vx1),
         height: Math.abs(vy2 - vy1)
       }
-      if (DEBUG_LINKS) console.log(`[LinkLayer] Found text URL: "${url}" at`, rect)
-      links.push({ url, rect })
+      if (DEBUG_LINKS) console.log(`[LinkLayer] Found text URL: "${url}" at`, normalizedRect)
+      cachedLinks.push({ url, normalizedRect })
       annotationUrls.add(normalizeUrl(url)) // Prevent further duplicates
     }
   }
 
-  // Scan for QR codes containing URLs
-  const qrLinks = await scanPageForQRCodes(documentId, pageIndex, scale, annotationUrls)
-  links.push(...qrLinks)
+  // Scan for QR codes containing URLs (at scale 1.0 for caching)
+  const qrLinks = await scanPageForQRCodes(documentId, pageIndex, 1.0, annotationUrls)
+  cachedLinks.push(...qrLinks)
 
-  if (DEBUG_LINKS) console.log(`[LinkLayer] Total links found: ${links.length}`)
-  return links
+  // Cache the results
+  linkCache.set(cacheKey, cachedLinks)
+  if (DEBUG_LINKS) console.log(`[LinkLayer] Cached ${cachedLinks.length} links for page ${pageIndex}`)
+
+  // Return links scaled to requested scale
+  return cachedLinks.map(link => ({
+    url: link.url,
+    rect: {
+      x: link.normalizedRect.x * scale,
+      y: link.normalizedRect.y * scale,
+      width: link.normalizedRect.width * scale,
+      height: link.normalizedRect.height * scale
+    }
+  }))
 }
 
 // URL pattern for validating QR code content - matches URLs with or without protocol
@@ -227,19 +269,20 @@ const QR_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\
 
 /**
  * Scan a PDF page for QR codes containing URLs
+ * Returns CachedLinks with coordinates normalized to scale 1.0
  */
 async function scanPageForQRCodes(
   documentId: string,
   pageIndex: number,
-  scale: number,
+  targetScale: number,
   existingUrls: Set<string>
-): Promise<PdfLink[]> {
-  const links: PdfLink[] = []
+): Promise<CachedLink[]> {
+  const links: CachedLink[] = []
 
   try {
     // Render page to canvas for QR scanning
     // Use higher scale for better QR detection (small QR codes need more resolution)
-    const scanScale = Math.max(scale, 2.5)
+    const scanScale = 2.5
     const { canvas, width, height } = await renderPage(documentId, pageIndex, scanScale)
 
     const ctx = canvas.getContext('2d')
@@ -281,18 +324,18 @@ async function scanPageForQRCodes(
 
         // Skip if already found
         if (!existingUrls.has(normalizeUrl(url))) {
-          // Calculate position in viewport coordinates
-          // QR code location is in scan canvas coordinates, need to scale to target viewport
-          const scaleRatio = scale / scanScale
-          const rect = {
+          // Calculate position normalized to scale 1.0
+          // QR code location is in scan canvas coordinates (at scanScale), convert to scale 1.0
+          const scaleRatio = targetScale / scanScale
+          const normalizedRect = {
             x: qrCode.location.topLeftCorner.x * scaleRatio,
             y: qrCode.location.topLeftCorner.y * scaleRatio,
             width: (qrCode.location.topRightCorner.x - qrCode.location.topLeftCorner.x) * scaleRatio,
             height: (qrCode.location.bottomLeftCorner.y - qrCode.location.topLeftCorner.y) * scaleRatio
           }
 
-          if (DEBUG_LINKS) console.log(`[LinkLayer] Found QR code URL: "${url}" at`, rect)
-          links.push({ url, rect })
+          if (DEBUG_LINKS) console.log(`[LinkLayer] Found QR code URL: "${url}" at`, normalizedRect)
+          links.push({ url, normalizedRect })
           existingUrls.add(normalizeUrl(url))
         }
       } else if (DEBUG_LINKS) {
@@ -329,6 +372,12 @@ export function unloadDocument(id: string): void {
   if (pdf) {
     pdf.destroy()
     documentCache.delete(id)
+    // Clear link cache for this document
+    for (const key of linkCache.keys()) {
+      if (key.startsWith(`${id}-`)) {
+        linkCache.delete(key)
+      }
+    }
   }
 }
 
@@ -337,4 +386,5 @@ export function clearAllDocuments(): void {
     pdf.destroy()
   }
   documentCache.clear()
+  linkCache.clear()
 }

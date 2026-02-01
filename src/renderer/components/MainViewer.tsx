@@ -64,6 +64,8 @@ export default function MainViewer({
   const [hasContent, setHasContent] = useState(false)
   const [canvasDimensions, setCanvasDimensions] = useState({ width: 0, height: 0 })
   const previousContainerWidth = useRef<number>(0)
+  // Track previous page to detect page changes vs zoom changes
+  const previousPage = useRef<{ documentId: string | null; pageIndex: number }>({ documentId: null, pageIndex: 0 })
 
   // Panning state
   const [isPanning, setIsPanning] = useState(false)
@@ -77,6 +79,11 @@ export default function MainViewer({
       setCanvasDimensions({ width: 0, height: 0 })
       return
     }
+
+    // Check if this is a page change (should reset scroll) vs zoom change (preserve scroll)
+    const isPageChange = previousPage.current.documentId !== documentId ||
+                         previousPage.current.pageIndex !== pageIndex
+    previousPage.current = { documentId, pageIndex }
 
     let cancelled = false
     setRendering(true)
@@ -92,9 +99,8 @@ export default function MainViewer({
           ctx.drawImage(renderedCanvas, 0, 0)
           setHasContent(true)
           setCanvasDimensions({ width, height })
-
-          // Scroll to top-left when page changes
-          if (containerRef.current) {
+          // Only reset scroll position when changing pages, not when zooming
+          if (isPageChange && containerRef.current) {
             containerRef.current.scrollTop = 0
             containerRef.current.scrollLeft = 0
           }
@@ -178,6 +184,22 @@ export default function MainViewer({
       document.removeEventListener('keyup', handleKeyUp)
     }
   }, [currentTool, onToolChange])
+
+  // Prevent wheel scrolling during grab mode (since we removed overflow:hidden to preserve scroll position)
+  useEffect(() => {
+    if (currentTool !== 'grab' || !containerRef.current) return
+
+    const container = containerRef.current
+    const preventWheel = (e: WheelEvent) => {
+      // Allow zoom with Ctrl+wheel, but prevent regular scrolling
+      if (!e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+      }
+    }
+
+    container.addEventListener('wheel', preventWheel, { passive: false })
+    return () => container.removeEventListener('wheel', preventWheel)
+  }, [currentTool])
 
   // Allow panning with select tool, or when using grab tool
   const canPan = currentTool === 'select'
