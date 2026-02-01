@@ -83,6 +83,13 @@ export interface PenAnnotation extends BaseAnnotation {
   strokeWidth: PenWidth
 }
 
+// Image annotation - pasted image
+export interface ImageAnnotation extends BaseAnnotation {
+  type: 'image'
+  imageData: string // base64 encoded image data (data URL)
+  aspectRatio: number // original width/height ratio for constrained resizing
+}
+
 // Union of all annotation types
 export type Annotation =
   | HighlightAnnotation
@@ -91,6 +98,7 @@ export type Annotation =
   | BoxAnnotation
   | TextAnnotation
   | PenAnnotation
+  | ImageAnnotation
 
 // Box thickness in pixels (will be scaled by zoom)
 export const BOX_THICKNESS_PX: Record<BoxThickness, number> = {

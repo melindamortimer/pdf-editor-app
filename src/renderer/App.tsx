@@ -690,6 +690,87 @@ export default function App() {
     return () => window.removeEventListener('wheel', handleWheel)
   }, [])
 
+  // Handle paste events for images
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Only handle if we have a document open
+      const currentPage = pages[selectedPageIndex]
+      if (!currentPage) return
+
+      // Check for image data in clipboard
+      const items = e.clipboardData?.items
+      if (!items) return
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault()
+
+          const blob = item.getAsFile()
+          if (!blob) continue
+
+          // Convert to base64 data URL
+          const reader = new FileReader()
+          reader.onload = (event) => {
+            const imageData = event.target?.result as string
+            if (!imageData) return
+
+            // Load image to get dimensions for aspect ratio
+            const img = new Image()
+            img.onload = () => {
+              const imageAspectRatio = img.width / img.height
+
+              // Standard letter page size in points (72 DPI)
+              const pageWidthPts = 612
+              const pageHeightPts = 792
+
+              // Calculate normalized size based on original image dimensions
+              let width = img.width / pageWidthPts
+              let height = img.height / pageHeightPts
+
+              // Cap at 90% of page to keep it manageable
+              if (width > 0.9) {
+                const scale = 0.9 / width
+                width = 0.9
+                height = height * scale
+              }
+              if (height > 0.9) {
+                const scale = 0.9 / height
+                height = 0.9
+                width = width * scale
+              }
+
+              // Center on the page
+              const x = (1 - width) / 2
+              const y = (1 - height) / 2
+
+              const annotation = {
+                id: crypto.randomUUID(),
+                pageId: currentPage.id,
+                type: 'image' as const,
+                x,
+                y,
+                width,
+                height,
+                imageData,
+                aspectRatio: imageAspectRatio
+              }
+
+              wrappedAddAnnotation(annotation)
+              selectAnnotation(annotation.id)
+              handleToolChange('select')
+            }
+            img.src = imageData
+          }
+          reader.readAsDataURL(blob)
+          return // Only handle first image
+        }
+      }
+    }
+
+    window.addEventListener('paste', handlePaste)
+    return () => window.removeEventListener('paste', handlePaste)
+  }, [pages, selectedPageIndex, wrappedAddAnnotation, selectAnnotation, handleToolChange])
+
   // Update window title when documents change
   useEffect(() => {
     if (documents.length > 0) {

@@ -12,6 +12,8 @@
 
 .annotation {
   box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .annotation.selected {
@@ -30,6 +32,15 @@
 .annotation.box {
   border-radius: 2px;
   position: relative;
+}
+
+.annotation.image {
+  position: relative;
+}
+
+.annotation.image img {
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
 .box-resize-handle {

@@ -1,6 +1,6 @@
 import { PDFDocument, rgb, PDFPage as PdfLibPage } from 'pdf-lib'
 import type { PdfPage } from '../types/pdf'
-import type { Annotation, TextAnnotation, BoxAnnotation, HighlightAnnotation, UnderlineAnnotation, StrikethroughAnnotation, PenAnnotation } from '../types/annotations'
+import type { Annotation, TextAnnotation, BoxAnnotation, HighlightAnnotation, UnderlineAnnotation, StrikethroughAnnotation, PenAnnotation, ImageAnnotation } from '../types/annotations'
 import { BOX_THICKNESS_PX } from '../types/annotations'
 import { getEmbeddedFont, clearFontCache } from './fontLoader'
 
@@ -113,6 +113,9 @@ async function bakeAnnotationsOntoPage(
         break
       case 'text':
         await renderText(pdfDoc, page, annotation, x, y, width, height)
+        break
+      case 'image':
+        await renderImage(pdfDoc, page, annotation, x, y, width, height)
         break
     }
   }
@@ -323,6 +326,52 @@ async function renderText(
     }
 
     currentY -= lineHeight
+  }
+}
+
+async function renderImage(
+  pdfDoc: PDFDocument,
+  page: PdfLibPage,
+  annotation: ImageAnnotation,
+  x: number, y: number, width: number, height: number
+): Promise<void> {
+  try {
+    // Extract base64 data from data URL
+    const dataUrl = annotation.imageData
+    const base64Data = dataUrl.split(',')[1]
+    if (!base64Data) return
+
+    // Determine image type from data URL
+    const mimeMatch = dataUrl.match(/data:image\/(\w+);/)
+    const imageType = mimeMatch ? mimeMatch[1].toLowerCase() : 'png'
+
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Data)
+    const bytes = new Uint8Array(binaryString.length)
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+
+    // Embed image based on type
+    let image
+    if (imageType === 'png') {
+      image = await pdfDoc.embedPng(bytes)
+    } else if (imageType === 'jpeg' || imageType === 'jpg') {
+      image = await pdfDoc.embedJpg(bytes)
+    } else {
+      // Try PNG for other formats (may fail for some)
+      image = await pdfDoc.embedPng(bytes)
+    }
+
+    // Draw the image
+    page.drawImage(image, {
+      x,
+      y,
+      width,
+      height
+    })
+  } catch (error) {
+    console.error('Failed to render image annotation:', error)
   }
 }
 

@@ -237,8 +237,15 @@ export default function AnnotationLayer({
       let newWidth = Math.max(20, boxResizing.startWidth + deltaX)
       let newHeight = Math.max(20, boxResizing.startHeight + deltaY)
 
-      // Hold shift to maintain aspect ratio
-      if (e.shiftKey) {
+      // Check if resizing an image
+      const resizingAnnotation = annotations.find(a => a.id === boxResizing.id)
+      const isImage = resizingAnnotation?.type === 'image'
+
+      // For images: always maintain aspect ratio UNLESS shift is held
+      // For boxes: maintain aspect ratio only IF shift is held
+      const shouldMaintainAspect = isImage ? !e.shiftKey : e.shiftKey
+
+      if (shouldMaintainAspect) {
         // Use the larger delta to determine size, maintain aspect ratio
         const widthRatio = newWidth / boxResizing.startWidth
         const heightRatio = newHeight / boxResizing.startHeight
@@ -1291,6 +1298,43 @@ export default function AnnotationLayer({
             )}
           </div>
         )
+
+      case 'image': {
+        const showResizeHandle = isSelected || currentTool === 'select'
+        return (
+          <div
+            key={annotation.id}
+            className={`annotation image ${isSelected ? 'selected' : ''}`}
+            style={{
+              ...baseStyle,
+              pointerEvents: showResizeHandle ? 'auto' : baseStyle.pointerEvents,
+              userSelect: 'none',
+              WebkitUserSelect: 'none'
+            }}
+          >
+            <img
+              src={annotation.imageData}
+              alt=""
+              draggable={false}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'fill',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitUserDrag: 'none'
+              } as React.CSSProperties}
+            />
+            {showResizeHandle && isSelected && (
+              <div
+                className="box-resize-handle"
+                onMouseDown={(e) => startBoxResize(e, annotation)}
+              />
+            )}
+          </div>
+        )
+      }
 
       default:
         return null
