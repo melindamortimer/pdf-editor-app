@@ -608,3 +608,29 @@
   left: 0;
   transform: none;
 }
+
+/* Highlight color preset buttons */
+.highlight-colors {
+  display: flex;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.highlight-color-button {
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  border: 2px solid transparent !important;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.highlight-color-button:hover {
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.highlight-color-button.active {
+  border-color: transparent !important;
+  box-shadow: 0 0 0 2px #fff;
+}

@@ -270,13 +270,14 @@ describe('Toolbar', () => {
       expect(getByTooltip('Select (S)')).not.toBeDisabled()
     })
 
-    it('shows color picker when highlight tool is selected', () => {
+    it('shows highlight color buttons when highlight tool is selected', () => {
       const { container } = renderWithProviders(
         <Toolbar {...defaultProps} hasDocuments={true} currentTool="highlight" />
       )
 
-      // ColorPicker component should be visible
-      expect(container.querySelector('.color-picker')).toBeInTheDocument()
+      // Highlight color preset buttons should be visible
+      expect(container.querySelector('.highlight-colors')).toBeInTheDocument()
+      expect(container.querySelectorAll('.highlight-color-button')).toHaveLength(4)
     })
 
     it('does not show color picker for other tools', () => {
@@ -285,7 +286,7 @@ describe('Toolbar', () => {
       )
 
       // No color picker visible in select mode without selection
-      expect(queryByTooltip('Color')).not.toBeInTheDocument()
+      expect(queryByTooltip('Colour')).not.toBeInTheDocument()
     })
   })
 

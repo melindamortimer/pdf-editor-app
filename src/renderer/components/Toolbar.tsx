@@ -40,6 +40,13 @@ const BOX_THICKNESS_OPTIONS: { id: BoxThickness; label: string }[] = [
   { id: 'thick', label: 'Thick' }
 ]
 
+const HIGHLIGHT_COLORS = [
+  { color: '#ffeb3b', label: 'Yellow' },
+  { color: '#4caf50', label: 'Green' },
+  { color: '#ff80ab', label: 'Pink' },
+  { color: '#ff9800', label: 'Orange' }
+]
+
 interface ToolbarProps {
   hasDocuments: boolean
   hasUnsavedChanges: boolean
@@ -228,18 +235,24 @@ export default function Toolbar({
         ))}
 
         {currentTool === 'highlight' && (
-          <ColorPicker
-            color={highlightColor}
-            onChange={onHighlightColorChange}
-            label="Color"
-          />
+          <div className="highlight-colors">
+            {HIGHLIGHT_COLORS.map(({ color, label }) => (
+              <button
+                key={color}
+                className={`highlight-color-button ${highlightColor === color ? 'active' : ''}`}
+                style={{ backgroundColor: color }}
+                onClick={() => onHighlightColorChange(color)}
+                data-tooltip={label}
+              />
+            ))}
+          </div>
         )}
 
         {(currentTool === 'underline' || currentTool === 'strikethrough') && (
           <ColorPicker
             color={lineColor}
             onChange={onLineColorChange}
-            label="Color"
+            label="Colour"
           />
         )}
 
@@ -293,7 +306,7 @@ export default function Toolbar({
             <ColorPicker
               color={penColor}
               onChange={onPenColorChange}
-              label="Color"
+              label="Colour"
             />
             {/* Pen width dropdown */}
             <div className="color-dropdown-container" ref={penWidthDropdownRef}>
@@ -390,7 +403,7 @@ export default function Toolbar({
             <ColorPicker
               color={textColor}
               onChange={onTextColorChange}
-              label="Color"
+              label="Colour"
             />
           </>
         )}
