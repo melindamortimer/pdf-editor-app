@@ -73,10 +73,21 @@ export default function LinkLayer({
     }
   }, [])
 
+  const isQrData = (url: string) => url.startsWith('qrdata:')
+  const getQrDataContent = (url: string) => url.slice('qrdata:'.length)
+
   const handleClick = (e: React.MouseEvent, url: string) => {
     // Always prevent default to stop <a> tag from navigating
     e.preventDefault()
     e.stopPropagation()
+
+    if (isQrData(url)) {
+      // Non-URL QR code — copy content to clipboard
+      if ((e.metaKey || e.ctrlKey) && currentTool === 'select') {
+        navigator.clipboard.writeText(getQrDataContent(url))
+      }
+      return
+    }
 
     // Only open on cmd+click (Mac) or ctrl+click (Windows/Linux) with select tool
     if ((e.metaKey || e.ctrlKey) && currentTool === 'select') {
@@ -96,21 +107,26 @@ export default function LinkLayer({
       className={`link-layer select-tool ${modifierActive ? 'modifier-active' : ''}`}
       style={{ width, height }}
     >
-      {links.map((link, index) => (
-        <a
-          key={index}
-          href={link.url}
-          className="pdf-link"
-          title={`${link.url}\n(Cmd+Click to open)`}
-          style={{
-            left: link.rect.x,
-            top: link.rect.y,
-            width: link.rect.width,
-            height: link.rect.height
-          }}
-          onClick={(e) => handleClick(e, link.url)}
-        />
-      ))}
+      {links.map((link, index) => {
+        const qrData = isQrData(link.url)
+        const displayText = qrData ? getQrDataContent(link.url) : link.url
+        const actionHint = qrData ? '(Cmd+Click to copy)' : '(Cmd+Click to open)'
+        return (
+          <a
+            key={index}
+            href={qrData ? '#' : link.url}
+            className={`pdf-link${qrData ? ' qr-data' : ''}`}
+            title={`${displayText}\n${actionHint}`}
+            style={{
+              left: link.rect.x,
+              top: link.rect.y,
+              width: link.rect.width,
+              height: link.rect.height
+            }}
+            onClick={(e) => handleClick(e, link.url)}
+          />
+        )
+      })}
     </div>
   )
 }

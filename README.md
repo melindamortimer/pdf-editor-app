@@ -74,7 +74,7 @@ Built installers will be in the `release/` folder.
 - **React + TypeScript** - UI framework with type safety
 - **PDF.js** - Mozilla's PDF renderer for viewing
 - **pdf-lib** - Pure JS library for PDF manipulation (reorder, delete, duplicate, merge, add annotations)
-- **jsQR** - QR code detection for clickable QR code links
+- **jsQR** - QR code detection for displaying QR code content
 - **@dnd-kit** - Drag-and-drop toolkit for page reordering
 - **Vite** - Build tooling for fast development
 - **Vitest** - Unit testing framework
@@ -133,11 +133,12 @@ The viewer automatically detects clickable links in PDFs:
 
 - **PDF link annotations** - Standard hyperlinks embedded in the PDF
 - **Text URLs** - URLs visible in the PDF text (e.g., "www.example.com")
-- **QR codes** - QR codes containing URLs are detected and made clickable
+- **QR codes** - All QR codes are detected and their content displayed. URL QR codes are clickable; non-URL QR codes show their encoded data and can be copied.
 
 **How to use:**
 - Hover over a link to see a highlight and tooltip with the URL
 - Hold **Ctrl** (or **Cmd** on Mac) and click to open the link in your default browser
+- For non-URL QR codes, **Ctrl+Click** copies the encoded data to clipboard
 - Links only become clickable when the modifier key is held (prevents accidental navigation)
 
 ### Text Fonts (8 options)

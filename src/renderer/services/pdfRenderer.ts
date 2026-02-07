@@ -85,7 +85,8 @@ interface CachedLink {
 }
 
 // URL pattern to match URLs in text (with or without protocol)
-const URL_PATTERN = /(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/gi
+// Requires either a protocol/www prefix, or the TLD must be purely alphabetic (to avoid matching numbers like "3.14")
+const URL_PATTERN = /(?:https?:\/\/[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)|(?:www\.)?[-a-zA-Z0-9@:%_+~#=]{1,256}\.(?=[a-zA-Z])[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*))/gi
 
 // Debug flag for link detection logging
 const DEBUG_LINKS = false
@@ -268,8 +269,9 @@ export async function getPageLinks(
 const QR_URL_PATTERN = /^(?:https?:\/\/)?(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b/i
 
 /**
- * Scan a PDF page for QR codes containing URLs
+ * Scan a PDF page for QR codes
  * Returns CachedLinks with coordinates normalized to scale 1.0
+ * URL-like QR data is turned into clickable links; other data uses a data: URI for display
  */
 async function scanPageForQRCodes(
   documentId: string,
@@ -310,36 +312,40 @@ async function scanPageForQRCodes(
       foundCount++
       if (DEBUG_LINKS) console.log(`[LinkLayer] jsQR found QR code #${foundCount} with data: "${qrCode.data}"`)
 
-      let url = qrCode.data
+      const rawData = qrCode.data
+      let isUrl = QR_URL_PATTERN.test(rawData)
+      let url: string
 
-      // Only process if it looks like a URL
-      if (QR_URL_PATTERN.test(url)) {
+      if (isUrl) {
+        url = rawData
         // Add protocol if missing
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
           url = 'https://' + url
         }
+      } else {
+        // Non-URL QR data — use a data: URI so it can still be displayed
+        url = `qrdata:${rawData}`
+      }
 
-        // Normalize for comparison
-        const normalizeUrl = (u: string) => u.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '')
+      // Normalize for dedup comparison
+      const normalizeUrl = (u: string) => u.toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '')
+      const dedup = isUrl ? normalizeUrl(url) : url
 
-        // Skip if already found
-        if (!existingUrls.has(normalizeUrl(url))) {
-          // Calculate position normalized to scale 1.0
-          // QR code location is in scan canvas coordinates (at scanScale), convert to scale 1.0
-          const scaleRatio = targetScale / scanScale
-          const normalizedRect = {
-            x: qrCode.location.topLeftCorner.x * scaleRatio,
-            y: qrCode.location.topLeftCorner.y * scaleRatio,
-            width: (qrCode.location.topRightCorner.x - qrCode.location.topLeftCorner.x) * scaleRatio,
-            height: (qrCode.location.bottomLeftCorner.y - qrCode.location.topLeftCorner.y) * scaleRatio
-          }
-
-          if (DEBUG_LINKS) console.log(`[LinkLayer] Found QR code URL: "${url}" at`, normalizedRect)
-          links.push({ url, normalizedRect })
-          existingUrls.add(normalizeUrl(url))
+      // Skip if already found
+      if (!existingUrls.has(dedup)) {
+        // Calculate position normalized to scale 1.0
+        // QR code location is in scan canvas coordinates (at scanScale), convert to scale 1.0
+        const scaleRatio = targetScale / scanScale
+        const normalizedRect = {
+          x: qrCode.location.topLeftCorner.x * scaleRatio,
+          y: qrCode.location.topLeftCorner.y * scaleRatio,
+          width: (qrCode.location.topRightCorner.x - qrCode.location.topLeftCorner.x) * scaleRatio,
+          height: (qrCode.location.bottomLeftCorner.y - qrCode.location.topLeftCorner.y) * scaleRatio
         }
-      } else if (DEBUG_LINKS) {
-        console.log(`[LinkLayer] QR code data "${qrCode.data}" does not look like a URL`)
+
+        if (DEBUG_LINKS) console.log(`[LinkLayer] Found QR code ${isUrl ? 'URL' : 'data'}: "${url}" at`, normalizedRect)
+        links.push({ url, normalizedRect })
+        existingUrls.add(dedup)
       }
 
       // Blank out the found QR code region so we can find others

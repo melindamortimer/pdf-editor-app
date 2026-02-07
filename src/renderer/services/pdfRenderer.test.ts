@@ -161,6 +161,25 @@ describe('pdfRenderer', () => {
       expect(links).toHaveLength(1)
     })
 
+    it('does not match decimal numbers as URLs', async () => {
+      const mockPage = createMockPage({
+        textItems: [
+          {
+            str: 'The value is 3.14 and version 2.0 has 100.000 entries',
+            transform: [12, 0, 0, 12, 72, 700],
+            width: 400
+          }
+        ]
+      })
+      mockGetPage.mockResolvedValue(mockPage)
+      mockJsQR.mockReturnValue(null)
+
+      await loadPdfDocument(new ArrayBuffer(10), 'test-doc')
+      const links = await getPageLinks('test-doc', 0, 1.0)
+
+      expect(links).toHaveLength(0)
+    })
+
     it('normalizes URLs for deduplication (http vs https)', async () => {
       const mockPage = createMockPage({
         annotations: [
@@ -221,7 +240,7 @@ describe('pdfRenderer', () => {
       expect(links[0].url).toBe('https://qr-example.com')
     })
 
-    it('ignores QR codes without URLs', async () => {
+    it('detects QR codes with non-URL data using qrdata: prefix', async () => {
       const mockPage = createMockPage()
       mockGetPage.mockResolvedValue(mockPage)
 
@@ -238,7 +257,8 @@ describe('pdfRenderer', () => {
       await loadPdfDocument(new ArrayBuffer(10), 'test-doc')
       const links = await getPageLinks('test-doc', 0, 1.0)
 
-      expect(links).toHaveLength(0)
+      expect(links).toHaveLength(1)
+      expect(links[0].url).toBe('qrdata:Just some text, not a URL')
     })
 
     it('handles pages with no QR codes', async () => {
