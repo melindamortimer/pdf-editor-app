@@ -86,9 +86,10 @@ Built installers will be in the `release/` folder.
 1. Open and view single or multiple PDF files
 2. Reorder, delete, and duplicate pages via drag-and-drop thumbnails
 3. Merge pages from multiple PDFs into a single document
-4. Add annotations (highlight, underline, strikethrough, boxes, text)
-5. Move/edit annotations freely until saved
-6. Save changes to original file or Save As new file
+4. Select and copy text from PDFs (Ctrl+C)
+5. Add annotations (highlight, underline, strikethrough, boxes, text)
+6. Move/edit annotations freely until saved
+7. Save changes to original file or Save As new file
 
 ### Page Management
 - **Reorder:** Drag thumbnails to new positions
@@ -107,6 +108,16 @@ Built installers will be in the `release/` folder.
 | **Text** | Placed text with font selection, size, color, and formatting (bold, italic, underline) |
 | **Pen** | Freehand drawing with customizable color and stroke width (1-10px) |
 | **Eraser** | Select text to erase all text annotations (highlights, underlines, strikethroughs) |
+
+### Text Selection & Copy
+
+While using the **Select** tool (`S`), click and drag over PDF text to select it:
+
+- Selected text is highlighted in blue
+- Press **Ctrl+C** to copy the selected text to the system clipboard
+- Click on empty space or press **Escape** to clear the selection
+- Clicking on annotations still works normally (the selection layer detects whether you clicked on text or not)
+- Selection is cleared when switching tools or changing pages
 
 **Text-based annotations** (highlight, underline, strikethrough):
 - Click and drag over PDF text to select words
@@ -262,7 +273,7 @@ The viewer automatically detects clickable links in PDFs:
 | Ctrl+Shift+S | Save As |
 | Ctrl+Z | Undo |
 | Ctrl+Y | Redo |
-| Ctrl+C | Copy selected page(s) |
+| Ctrl+C | Copy selected text to clipboard, or copy selected page(s) |
 | Ctrl+V | Paste copied page(s) |
 | Delete / Backspace | Delete selected page or annotation |
 | Escape | Deselect annotation |

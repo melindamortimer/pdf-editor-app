@@ -27,6 +27,8 @@ interface TextLayerProps {
   onAddAnnotation: (annotation: Annotation) => void
   onUpdateAnnotation: (id: string, updates: Partial<Annotation>) => void
   onDeleteAnnotation: (id: string) => void
+  onTextSelected?: (text: string) => void
+  onTextSelectionCleared?: () => void
   debug?: boolean
 }
 
@@ -44,6 +46,8 @@ export default function TextLayer({
   onAddAnnotation,
   onUpdateAnnotation,
   onDeleteAnnotation,
+  onTextSelected,
+  onTextSelectionCleared,
   debug = false
 }: TextLayerProps) {
   const [textBoxes, setTextBoxes] = useState<TextBox[]>([])
@@ -55,6 +59,8 @@ export default function TextLayer({
 
   // Is this a text-selection tool?
   const isTextTool = currentTool === 'highlight' || currentTool === 'underline' || currentTool === 'strikethrough' || currentTool === 'eraser'
+  const isSelectTextMode = currentTool === 'select'
+  const isActive = isTextTool || isSelectTextMode
 
   useEffect(() => {
     if (!documentId) return
@@ -149,13 +155,43 @@ export default function TextLayer({
   }, [currentTool])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isTextTool) return
+    if (!isActive) return
 
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
     const hit = findWordAtPoint(lines, x, y)
+
+    // In select mode, if click is NOT on text, re-dispatch to layer below
+    if (isSelectTextMode && !hit) {
+      // Clear any existing text selection
+      setSelection(null)
+      onTextSelectionCleared?.()
+
+      // Temporarily disable pointer-events on this layer so the click falls through
+      const layer = e.currentTarget as HTMLElement
+      layer.style.pointerEvents = 'none'
+      const elementBelow = document.elementFromPoint(e.clientX, e.clientY)
+      layer.style.pointerEvents = ''
+
+      if (elementBelow && elementBelow !== layer) {
+        elementBelow.dispatchEvent(new MouseEvent('mousedown', {
+          bubbles: true,
+          cancelable: true,
+          clientX: e.clientX,
+          clientY: e.clientY,
+          button: e.button,
+          buttons: e.buttons,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey
+        }))
+      }
+      return
+    }
+
     if (!hit) return
 
     e.preventDefault()
@@ -171,7 +207,7 @@ export default function TextLayer({
       endWord: hit.wordIndex
     })
     setIsDragging(true)
-  }, [isTextTool, lines])
+  }, [isActive, isSelectTextMode, lines, onTextSelectionCleared])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging || !selection) return
@@ -232,6 +268,7 @@ export default function TextLayer({
     const isClick = !mouseMoved.current
     if (isClick) {
       setSelection(null)
+      if (isSelectTextMode) onTextSelectionCleared?.()
       return
     }
 
@@ -239,6 +276,16 @@ export default function TextLayer({
     const selectedWords = getSelectedWords(lines, selection)
     if (selectedWords.length === 0) {
       setSelection(null)
+      return
+    }
+
+    // Select tool - extract text and keep selection visible
+    if (isSelectTextMode) {
+      const text = selectedWords
+        .map(line => line.boxes.map(box => box.text).join(' '))
+        .join('\n')
+      onTextSelected?.(text)
+      // Keep selection visible (don't clear it)
       return
     }
 
@@ -536,7 +583,7 @@ export default function TextLayer({
     }
 
     setSelection(null)
-  }, [isDragging, selection, lines, pageId, width, height, currentTool, highlightColor, lineColor, onAddAnnotation, onUpdateAnnotation, onDeleteAnnotation, annotations, findOverlappingAnnotations])
+  }, [isDragging, selection, lines, pageId, width, height, currentTool, isSelectTextMode, highlightColor, lineColor, onAddAnnotation, onUpdateAnnotation, onDeleteAnnotation, onTextSelected, onTextSelectionCleared, annotations, findOverlappingAnnotations])
 
   // Get preview boxes for current selection
   const previewBoxes = selection ? getSelectedWords(lines, selection) : []
@@ -592,7 +639,7 @@ export default function TextLayer({
 
   return (
     <div
-      className={`text-layer ${debug ? 'debug' : ''} ${isTextTool ? 'text-tool-active' : ''} ${currentTool === 'eraser' ? 'eraser-tool' : ''}`}
+      className={`text-layer ${debug ? 'debug' : ''} ${isTextTool ? 'text-tool-active' : ''} ${isSelectTextMode ? 'select-text-active' : ''} ${currentTool === 'eraser' ? 'eraser-tool' : ''}`}
       style={{ width, height }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -628,22 +675,24 @@ export default function TextLayer({
             className={`selection-preview ${currentTool} ${showErasePreview ? 'clear-mode' : ''}`}
             style={{
               left: lineSelection.minX,
-              // Erase preview always shows full text height, not just line
-              top: !showErasePreview && currentTool === 'underline'
+              // Erase/select preview always shows full text height, not just line
+              top: !isSelectTextMode && !showErasePreview && currentTool === 'underline'
                 ? lineSelection.y + lineSelection.height
-                : !showErasePreview && currentTool === 'strikethrough'
+                : !isSelectTextMode && !showErasePreview && currentTool === 'strikethrough'
                   // Position at ~65% down to account for descenders (p, g, y, etc.)
                   ? lineSelection.y + lineSelection.height * 0.65 - lineThickness / 2
                   : lineSelection.y,
               width: lineSelection.maxX - lineSelection.minX,
-              height: !showErasePreview && (currentTool === 'underline' || currentTool === 'strikethrough')
+              height: !isSelectTextMode && !showErasePreview && (currentTool === 'underline' || currentTool === 'strikethrough')
                 ? lineThickness
                 : lineSelection.height,
-              backgroundColor: showErasePreview
-                ? 'rgba(255, 0, 0, 0.15)'
-                : currentTool === 'highlight'
-                  ? hexToHighlightRgba(highlightColor)
-                  : lineColor
+              backgroundColor: isSelectTextMode
+                ? 'rgba(51, 122, 255, 0.25)'
+                : showErasePreview
+                  ? 'rgba(255, 0, 0, 0.15)'
+                  : currentTool === 'highlight'
+                    ? hexToHighlightRgba(highlightColor)
+                    : lineColor
             }}
           />
         )

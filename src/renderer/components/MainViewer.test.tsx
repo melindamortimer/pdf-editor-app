@@ -32,19 +32,30 @@ const defaultProps = {
   pageIndex: 0,
   zoom: 1,
   annotations: [],
-  selectedAnnotationId: null,
+  selectedAnnotationIds: new Set<string>(),
   currentTool: 'select' as const,
   highlightColor: 'yellow' as const,
   lineColor: '#ff0000',
   boxColor: '#ff0000',
+  boxFillColor: 'transparent',
   boxThickness: 'medium' as const,
+  penColor: '#000000',
+  penWidth: 2 as const,
   textColor: '#000000',
   textFont: 'Arial' as const,
   textSize: 12,
   onAddAnnotation: vi.fn(),
   onUpdateAnnotation: vi.fn(),
   onDeleteAnnotation: vi.fn(),
-  onSelectAnnotation: vi.fn()
+  onSelectAnnotation: vi.fn(),
+  onTextSelected: vi.fn(),
+  onTextSelectionCleared: vi.fn(),
+  onToolChange: vi.fn(),
+  onZoomChange: vi.fn(),
+  onBringToFront: vi.fn(),
+  onSendToBack: vi.fn(),
+  onBringForward: vi.fn(),
+  onSendBackward: vi.fn()
 }
 
 describe('MainViewer', () => {

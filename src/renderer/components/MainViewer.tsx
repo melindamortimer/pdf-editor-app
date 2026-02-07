@@ -31,6 +31,9 @@ interface MainViewerProps {
   onSelectAnnotation: (id: string | null) => void
   onToolChange: (tool: AnnotationTool) => void
   onZoomChange: (zoom: number) => void
+  // Text selection
+  onTextSelected?: (text: string) => void
+  onTextSelectionCleared?: () => void
   // Layer ordering
   onBringToFront: (id: string) => void
   onSendToBack: (id: string) => void
@@ -60,6 +63,8 @@ export default function MainViewer({
   onUpdateAnnotation,
   onDeleteAnnotation,
   onSelectAnnotation,
+  onTextSelected,
+  onTextSelectionCleared,
   onToolChange,
   onZoomChange,
   onBringToFront,
@@ -305,6 +310,8 @@ export default function MainViewer({
               onAddAnnotation={onAddAnnotation}
               onUpdateAnnotation={onUpdateAnnotation}
               onDeleteAnnotation={onDeleteAnnotation}
+              onTextSelected={onTextSelected}
+              onTextSelectionCleared={onTextSelectionCleared}
               debug={false}
             />
           )}

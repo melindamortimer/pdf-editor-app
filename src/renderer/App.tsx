@@ -29,6 +29,7 @@ export default function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(null)
   const [showSaveWarning, setShowSaveWarning] = useState(false)
+  const [selectedText, setSelectedText] = useState<string | null>(null)
 
   // Unified history for undo/redo (tracks both page and annotation operations)
   const [historyStack, setHistoryStack] = useState<HistoryEntry[]>([])
@@ -62,12 +63,23 @@ export default function App() {
     sendBackward
   } = useAnnotations()
 
+  // Text selection callbacks
+  const handleTextSelected = useCallback((text: string) => {
+    setSelectedText(text)
+  }, [])
+
+  const handleTextSelectionCleared = useCallback(() => {
+    setSelectedText(null)
+  }, [])
+
   // Wrapped setCurrentTool that clears selection when switching to drawing tools
   const handleToolChange = useCallback((tool: typeof currentTool) => {
     // Clear selection when switching to tools other than select or box
     if (tool !== 'select' && tool !== 'box') {
       selectAnnotation(null)
     }
+    // Clear text selection when switching tools
+    setSelectedText(null)
     setCurrentTool(tool)
   }, [selectAnnotation, setCurrentTool])
 
@@ -223,6 +235,7 @@ export default function App() {
 
   // Handle page selection with optional shift for multi-select
   const handlePageSelect = useCallback((index: number, shiftKey: boolean) => {
+    setSelectedText(null)
     if (shiftKey && pages.length > 0) {
       // Range selection from current selected to clicked
       const start = Math.min(selectedPageIndex, index)
@@ -607,11 +620,18 @@ export default function App() {
         return
       }
 
-      // Ctrl/Cmd + C: Copy selected pages
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && pages.length > 0) {
-        e.preventDefault()
-        handleCopyPages()
-        return
+      // Ctrl/Cmd + C: Copy selected text or selected pages
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        if (selectedText) {
+          e.preventDefault()
+          navigator.clipboard.writeText(selectedText)
+          return
+        }
+        if (pages.length > 0) {
+          e.preventDefault()
+          handleCopyPages()
+          return
+        }
       }
 
       // Ctrl/Cmd + V: Paste copied pages
@@ -621,10 +641,11 @@ export default function App() {
         return
       }
 
-      // Escape: Deselect annotation (stay on current tool)
+      // Escape: Deselect annotation and clear text selection (stay on current tool)
       if (e.key === 'Escape') {
         e.preventDefault()
         selectAnnotation(null)
+        setSelectedText(null)
         return
       }
 
@@ -669,7 +690,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationIds, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation, handleToolChange])
+  }, [handleOpenFiles, handleCloseDocument, handleSave, handleSaveAs, handleDeletePage, handleDuplicatePage, handleCopyPages, handlePastePages, pages.length, copiedPages.length, selectedPageIndex, selectedAnnotationIds, selectedText, wrappedDeleteAnnotation, unifiedUndo, unifiedRedo, selectAnnotation, handleToolChange])
 
   // Ctrl+Mouse Wheel zoom
   useEffect(() => {
@@ -958,6 +979,8 @@ export default function App() {
           onUpdateAnnotation={wrappedUpdateAnnotation}
           onDeleteAnnotation={wrappedDeleteAnnotation}
           onSelectAnnotation={selectAnnotation}
+          onTextSelected={handleTextSelected}
+          onTextSelectionCleared={handleTextSelectionCleared}
           onToolChange={handleToolChange}
           onZoomChange={setZoom}
           onBringToFront={wrappedBringToFront}

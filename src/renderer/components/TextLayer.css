@@ -13,6 +13,13 @@
   cursor: text;
 }
 
+/* Enable pointer events when select tool is active (for text selection) */
+.text-layer.select-text-active {
+  pointer-events: auto;
+  cursor: text;
+  z-index: 22;
+}
+
 /* Eraser tool inherits cursor from parent (canvas-container) */
 .text-layer.eraser-tool {
   cursor: inherit;
